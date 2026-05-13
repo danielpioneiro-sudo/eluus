@@ -13,6 +13,7 @@
       "bundleIdentifier": "app.eluus.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
+      "buildNumber": "2",
       "usesAppleSignIn": true,
       "infoPlist": {
         "UIBackgroundModes": [
