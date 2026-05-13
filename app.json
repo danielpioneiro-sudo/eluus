@@ -11,6 +11,7 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "app.eluus.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -21,6 +22,7 @@
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0d0f14"

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "446769198236",
+    "project_id": "voucom-285e0",
+    "storage_bucket": "voucom-285e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446769198236:android:974ee6cc48cf3291cae959",
+        "android_client_info": {
+          "package_name": "app.eluus.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "446769198236-hciaa0rvu7ugpg158sisg9c8apevqof4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.eluus.app",
+            "certificate_hash": "a68b4613a005d8b0b69edf15afb70eae7a33147c"
+          }
+        },
+        {
+          "client_id": "446769198236-pcj63meab020cvk223o0b84f5tpnadl6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs8s6TNRulQckCQ37DtRIn0oV5RUgak8k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "446769198236-pcj63meab020cvk223o0b84f5tpnadl6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "446769198236-bq9mnf7octcup4orh8hube3h36dd1ugq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.eluus.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
