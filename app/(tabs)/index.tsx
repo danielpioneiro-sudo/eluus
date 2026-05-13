@@ -1,98 +1,170 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { auth } from '../../firebaseConfig';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const { t } = useTranslation();
+  const [verificando, setVerificando] = useState(true);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.replace('/home');
+      } else {
+        setVerificando(false);
+      }
+    });
+    return unsub;
+  }, []);
+
+  if (verificando) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#4a9eff" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Image
+          source={require('../../assets/images/logo-completa.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View style={styles.buttons}>
+        <TouchableOpacity style={styles.btnPassageiro} onPress={() => router.push('/cadastro')}>
+          <Text style={styles.btnIcon}>🧍</Text>
+          <Text style={styles.btnTitle}>{t('index.passenger')}</Text>
+          <Text style={styles.btnSub}>{t('index.passengerSub')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.btnMotorista} onPress={() => router.push('/cadastro')}>
+          <Text style={styles.btnIcon}>🚗</Text>
+          <Text style={styles.btnTitle}>{t('index.driver')}</Text>
+          <Text style={styles.btnSub}>{t('index.driverSub')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/login')}>
+          <Text style={styles.link}>{t('index.login')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.footerWrap}>
+        <TouchableOpacity onPress={() => router.push('/termos')}>
+          <Text style={styles.footer}>
+            {t('index.terms')}{' '}
+            <Text style={styles.footerLink}>{t('index.termsLink')}</Text>
+          </Text>
+        </TouchableOpacity>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => router.push('/privacidade')}>
+            <Text style={styles.footerLinkSm}>{t('index.privacy')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerSep}> · </Text>
+          <TouchableOpacity onPress={() => router.push('/consentimento-localizacao')}>
+            <Text style={styles.footerLinkSm}>{t('index.location')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    backgroundColor: '#0d0f14',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 32,
+    paddingTop: 100,
+    paddingBottom: 48,
+  },
+  header: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  logo: {
+    width: 220,
+    height: 160,
+  },
+  loading: {
+    flex: 1,
+    backgroundColor: '#0d0f14',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttons: {
+    width: '100%',
+    gap: 16,
+  },
+  btnPassageiro: {
+    backgroundColor: '#1a1f2e',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#4a9eff',
+  },
+  btnMotorista: {
+    backgroundColor: '#1a1f2e',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  btnIcon: {
+    fontSize: 40,
+  },
+  btnTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  btnSub: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  link: {
+    color: '#4a9eff',
+    textAlign: 'center',
+    fontSize: 15,
+  },
+  footerWrap: {
     alignItems: 'center',
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  footer: {
+    fontSize: 12,
+    color: '#334155',
+    textAlign: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  footerLink: {
+    color: '#4a9eff',
+    textDecorationLine: 'underline',
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerLinkSm: {
+    fontSize: 11,
+    color: '#4a9eff',
+    textDecorationLine: 'underline',
+  },
+  footerSep: {
+    fontSize: 11,
+    color: '#334155',
   },
 });

@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "title": "Eluus — Corridas com quem você confia",
+    "description": "Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma."
+  },
+  "nav": {
+    "howItWorks": "Como funciona",
+    "passengers": "Passageiros",
+    "drivers": "Motoristas",
+    "download": "Baixar app"
+  },
+  "hero": {
+    "badge": "Convites disponíveis",
+    "titleHtml": "Conexões que<br><span>te levam</span>",
+    "sub": "Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.",
+    "btnDownload": "Baixar grátis",
+    "btnHow": "Como funciona",
+    "stat1val": "100%",
+    "stat1lbl": "Motoristas conhecidos",
+    "stat2val": "R$0",
+    "stat2lbl": "Taxa de plataforma",
+    "stat3val": "Você",
+    "stat3lbl": "Define o valor",
+    "stat4val": "Privado",
+    "stat4lbl": "Só por convite"
+  },
+  "how": {
+    "label": "Simples assim",
+    "title": "Como o Eluus funciona",
+    "sub": "Do convite à chegada, tudo pensado para ser rápido, seguro e direto.",
+    "s1title": "Receba um convite",
+    "s1text": "O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.",
+    "s2title": "Crie sua conta",
+    "s2text": "Cadastro rápido com nome, e-mail e CPF. Em minutos você já pode solicitar ou oferecer corridas.",
+    "s3title": "Conecte-se",
+    "s3text": "Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.",
+    "s4title": "Viaje com confiança",
+    "s4text": "Solicite ou aceite corridas. Valor combinado, chat integrado e navegação direto no mapa."
+  },
+  "diff": {
+    "label": "Por que Eluus",
+    "title": "Diferente de tudo que você conhece",
+    "sub": "Não somos um app de transporte comum. Somos uma rede de confiança com mobilidade.",
+    "c1title": "Acesso por convite",
+    "c1text": "Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.",
+    "c2title": "Sem taxas de plataforma",
+    "c2text": "O valor vai direto para o motorista. Nenhum percentual retido, nenhuma cobrança por corrida.",
+    "c3title": "Passageiro define o valor",
+    "c3text": "Você sabe quanto seu motorista cobra por km e decide antes de solicitar. Transparência total.",
+    "c4title": "Chat integrado",
+    "c4text": "Comunique-se com o motorista diretamente pelo app durante toda a corrida, sem precisar de número.",
+    "c5title": "Navegação nativa",
+    "c5text": "Abre diretamente no Google Maps, Waze ou Apple Maps com o destino já preenchido.",
+    "c6title": "Avaliações mútuas",
+    "c6text": "Passageiros e motoristas se avaliam após cada corrida, mantendo a qualidade da rede."
+  },
+  "for": {
+    "label": "Para todos",
+    "titleHtml": "Feito para passageiros<br>e motoristas"
+  },
+  "pass": {
+    "title": "🧍 Para passageiros",
+    "sub": "Mobilidade com pessoas que você já confia.",
+    "f1title": "Veja motoristas disponíveis",
+    "f1text": "Acompanhe em tempo real quem está online na sua rede.",
+    "f2title": "Escolha o destino",
+    "f2text": "Busca inteligente de endereços com Google Maps. Salve casa e trabalho.",
+    "f3title": "Preço antes de confirmar",
+    "f3text": "Veja o valor total calculado com base na distância antes de solicitar.",
+    "f4title": "Notificação de chegada",
+    "f4text": "O app avisa quando o motorista está a 200m do seu local.",
+    "f5title": "Histórico completo",
+    "f5text": "Consulte todas as suas corridas com valores, datas e motoristas."
+  },
+  "driv": {
+    "title": "🚗 Para motoristas",
+    "sub": "Ganhe dinheiro transportando pessoas da sua rede.",
+    "f1title": "Defina seu preço por km",
+    "f1text": "Você controla quanto cobra. Sem tabela imposta por plataforma.",
+    "f2title": "Receba solicitações",
+    "f2text": "Notificação sonora e vibração a cada nova corrida disponível.",
+    "f3title": "Aceite ou recuse",
+    "f3text": "Você decide cada corrida. Sem penalidade por recusa.",
+    "f4title": "Rastreamento automático",
+    "f4text": "Sua localização é atualizada em tempo real durante a corrida.",
+    "f5title": "Créditos por indicação",
+    "f5text": "Indique novos usuários e ganhe créditos extras para aceitar corridas."
+  },
+  "test": {
+    "label": "Comunidade",
+    "title": "O que dizem quem usa",
+    "sub": "Pessoas reais, corridas reais, confiança real.",
+    "t1text": "\"Finalmente um app onde eu sei quem está me buscando. Uso todo dia para ir ao trabalho com meu primo que é motorista. Simples, rápido e sem surpresa no preço.\"",
+    "t1name": "Camila R.",
+    "t1role": "Passageira, São Paulo",
+    "t2text": "\"Trabalho como motorista no Eluus nos fins de semana e já tenho uma carteira fiel de passageiros. O melhor: fico com 100% do valor. Não tem plataforma comendo minha renda.\"",
+    "t2name": "Lucas M.",
+    "t2role": "Motorista, Campinas",
+    "t3text": "\"Minha turma toda usa o Eluus para se locomover depois dos eventos. É muito mais seguro saber que o motorista é alguém que a gente conhece e confia.\"",
+    "t3name": "Fernanda S.",
+    "t3role": "Passageira, Curitiba"
+  },
+  "dl": {
+    "label": "Disponível agora",
+    "titleHtml": "Faça parte da<br>rede Eluus",
+    "text": "Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.",
+    "androidSmall": "Disponível no",
+    "androidStrong": "Google Play",
+    "iosSmall": "Baixar na",
+    "iosStrong": "App Store",
+    "inviteHtml": "Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede."
+  },
+  "foot": {
+    "tagline": "Conexões que te levam. Transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma.",
+    "appLabel": "App",
+    "legalLabel": "Legal",
+    "lhow": "Como funciona",
+    "lpass": "Para passageiros",
+    "ldriv": "Para motoristas",
+    "ldl": "Download",
+    "lterms": "Termos de uso",
+    "lprivacy": "Política de privacidade",
+    "lloc": "Uso de localização",
+    "copy": "© 2025 Eluus. Todos os direitos reservados.",
+    "made": "Feito com ❤️ para quem valoriza confiança."
+  }
+}

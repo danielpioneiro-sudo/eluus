@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "title": "Eluus — Rides with people you trust",
+    "description": "Eluus is the invite-only private transport app. Rides with people you know, no platform fees."
+  },
+  "nav": {
+    "howItWorks": "How it works",
+    "passengers": "Passengers",
+    "drivers": "Drivers",
+    "download": "Download"
+  },
+  "hero": {
+    "badge": "Invites available",
+    "titleHtml": "Connections that<br><span>move you</span>",
+    "sub": "Private transport with people you already know. No strangers, no platform fees, with total trust.",
+    "btnDownload": "Download free",
+    "btnHow": "How it works",
+    "stat1val": "100%",
+    "stat1lbl": "Known drivers",
+    "stat2val": "$0",
+    "stat2lbl": "Platform fee",
+    "stat3val": "You",
+    "stat3lbl": "Set the price",
+    "stat4val": "Private",
+    "stat4lbl": "Invite only"
+  },
+  "how": {
+    "label": "That simple",
+    "title": "How Eluus works",
+    "sub": "From invite to arrival, everything designed to be fast, safe, and straightforward.",
+    "s1title": "Receive an invite",
+    "s1text": "Access to Eluus is exclusive by invite from someone in your network. No strangers in the system.",
+    "s2title": "Create your account",
+    "s2text": "Quick sign-up with name and email. In minutes you can already request or offer rides.",
+    "s3title": "Connect",
+    "s3text": "Add drivers or passengers from your network using their invite code or scanning their QR Code.",
+    "s4title": "Ride with confidence",
+    "s4text": "Request or accept rides. Agreed price, integrated chat, and navigation directly on the map."
+  },
+  "diff": {
+    "label": "Why Eluus",
+    "title": "Different from everything you know",
+    "sub": "We're not a regular transport app. We're a trust network with mobility.",
+    "c1title": "Invite-only access",
+    "c1text": "Only people invited by someone already registered can join. Your network, your choice.",
+    "c2title": "No platform fees",
+    "c2text": "The fare goes directly to the driver. No percentage withheld, no charge per ride.",
+    "c3title": "Passenger sets the price",
+    "c3text": "You know how much your driver charges per km and decide before requesting. Full transparency.",
+    "c4title": "Integrated chat",
+    "c4text": "Communicate with the driver directly through the app throughout the ride, no phone number needed.",
+    "c5title": "Native navigation",
+    "c5text": "Opens directly in Google Maps, Waze or Apple Maps with the destination already filled in.",
+    "c6title": "Mutual ratings",
+    "c6text": "Passengers and drivers rate each other after every ride, maintaining network quality."
+  },
+  "for": {
+    "label": "For everyone",
+    "titleHtml": "Built for passengers<br>and drivers"
+  },
+  "pass": {
+    "title": "🧍 For passengers",
+    "sub": "Mobility with people you already trust.",
+    "f1title": "See available drivers",
+    "f1text": "Track in real time who is online in your network.",
+    "f2title": "Choose your destination",
+    "f2text": "Smart address search with Google Maps. Save home and work.",
+    "f3title": "Price before confirming",
+    "f3text": "See the total fare calculated by distance before requesting.",
+    "f4title": "Arrival notification",
+    "f4text": "The app alerts you when the driver is 200m from your location.",
+    "f5title": "Full history",
+    "f5text": "View all your rides with fares, dates and drivers."
+  },
+  "driv": {
+    "title": "🚗 For drivers",
+    "sub": "Earn money transporting people from your network.",
+    "f1title": "Set your price per km",
+    "f1text": "You control how much you charge. No rate imposed by any platform.",
+    "f2title": "Receive requests",
+    "f2text": "Sound notification and vibration for every new available ride.",
+    "f3title": "Accept or decline",
+    "f3text": "You decide on every ride. No penalty for declining.",
+    "f4title": "Automatic tracking",
+    "f4text": "Your location is updated in real time during the ride.",
+    "f5title": "Referral credits",
+    "f5text": "Refer new users and earn extra credits to accept rides."
+  },
+  "test": {
+    "label": "Community",
+    "title": "What our users say",
+    "sub": "Real people, real rides, real trust.",
+    "t1text": "\"Finally an app where I know who's picking me up. I use it every day to get to work with my cousin who's a driver. Simple, fast and no price surprises.\"",
+    "t1name": "Camila R.",
+    "t1role": "Passenger, São Paulo",
+    "t2text": "\"I work as a driver on Eluus on weekends and already have a loyal base of passengers. The best part: I keep 100% of the fare. No platform eating into my income.\"",
+    "t2name": "Lucas M.",
+    "t2role": "Driver, Campinas",
+    "t3text": "\"My whole crew uses Eluus to get around after events. It's so much safer knowing the driver is someone you know and trust.\"",
+    "t3name": "Fernanda S.",
+    "t3role": "Passenger, Curitiba"
+  },
+  "dl": {
+    "label": "Available now",
+    "titleHtml": "Join the<br>Eluus network",
+    "text": "Download the app, enter your invite code and start moving with confidence. Available for Android and iOS.",
+    "androidSmall": "Get it on",
+    "androidStrong": "Google Play",
+    "iosSmall": "Download on the",
+    "iosStrong": "App Store",
+    "inviteHtml": "You need an <strong>invite code</strong> to create your account. Ask someone from your network."
+  },
+  "foot": {
+    "tagline": "Connections that move you. Private transport between people who know each other, with trust and no platform fees.",
+    "appLabel": "App",
+    "legalLabel": "Legal",
+    "lhow": "How it works",
+    "lpass": "For passengers",
+    "ldriv": "For drivers",
+    "ldl": "Download",
+    "lterms": "Terms of use",
+    "lprivacy": "Privacy policy",
+    "lloc": "Location use",
+    "copy": "© 2025 Eluus. All rights reserved.",
+    "made": "Made with ❤️ for those who value trust."
+  }
+}

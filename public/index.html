@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eluus — Corridas com quem você confia</title>
+  <meta name="description" content="Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma." />
+  <meta property="og:title" content="Eluus — Corridas com quem você confia" />
+  <meta property="og:description" content="App de transporte privado por convite entre pessoas que se conhecem." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="images/icon.png" />
+  <link rel="icon" type="image/png" href="images/icon.png" />
+  <link rel="apple-touch-icon" href="images/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f97316;
+      --orange-light: #fb923c;
+      --orange-dim: rgba(249,115,22,.12);
+      --bg: #0a0d12;
+      --bg2: #0f1318;
+      --bg3: #141920;
+      --card: #161c25;
+      --border: rgba(255,255,255,.06);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%;
+      height: 68px;
+      background: rgba(10,13,18,.85);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: block; object-fit: cover;
+    }
+    .nav-logo-name { font-size: 20px; font-weight: 800; color: var(--text); }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      color: var(--muted2); font-size: 14px; font-weight: 500;
+      text-decoration: none; transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--orange); color: #fff !important;
+      padding: 9px 20px; border-radius: 10px; font-weight: 600 !important;
+      transition: background .2s !important;
+    }
+    .nav-cta:hover { background: var(--orange-light) !important; }
+    .nav-right { display: flex; align-items: center; gap: 6px; }
+    .nav-menu-btn {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text); padding: 4px;
+    }
+    .nav-menu-btn svg { width: 24px; height: 24px; }
+
+    /* ── LANG SWITCHER ── */
+    .lang-switcher { display: flex; align-items: center; gap: 2px; }
+    .lang-btn {
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--muted2);
+      font-weight: 600;
+      transition: color .2s, border-color .2s, background .2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      letter-spacing: .3px;
+      font-family: inherit;
+    }
+    .lang-btn:hover { color: var(--text); border-color: var(--border); }
+    .lang-btn.active { color: var(--orange); border-color: rgba(249,115,22,.3); background: var(--orange-dim); }
+    .lang-code { font-size: 11px; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 120px 5% 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+      width: 700px; height: 700px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(249,115,22,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--orange-dim); border: 1px solid rgba(249,115,22,.3);
+      border-radius: 100px; padding: 6px 16px; margin-bottom: 28px;
+      font-size: 13px; font-weight: 600; color: var(--orange);
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--orange);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .5; transform: scale(.8); }
+    }
+    .hero h1 {
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      font-weight: 900; line-height: 1.1; letter-spacing: -2px;
+      margin-bottom: 24px;
+    }
+    .hero h1 span { color: var(--orange); }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--muted2); max-width: 560px; margin: 0 auto 44px;
+      font-weight: 400;
+    }
+    .hero-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--orange); color: #fff;
+      padding: 15px 28px; border-radius: 14px;
+      font-size: 15px; font-weight: 700; text-decoration: none;
+      transition: background .2s, transform .15s;
+    }
+    .btn-primary:hover { background: var(--orange-light); transform: translateY(-2px); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--card); color: var(--text);
+      border: 1px solid var(--border);
+      padding: 15px 28px; border-radius: 14px;
+      font-size: 15px; font-weight: 600; text-decoration: none;
+      transition: border-color .2s, transform .15s;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,.2); transform: translateY(-2px); }
+    .hero-stats {
+      display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
+      margin-top: 72px; padding-top: 48px; border-top: 1px solid var(--border);
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--orange); }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── SECTIONS ── */
+    section { padding: 96px 5%; }
+    .section-label {
+      display: inline-block;
+      font-size: 12px; font-weight: 700; letter-spacing: 2px;
+      color: var(--orange); text-transform: uppercase; margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800; letter-spacing: -1px; line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--muted2); max-width: 520px;
+      margin-bottom: 64px;
+    }
+    .section-header { max-width: 1200px; margin: 0 auto; }
+    .section-header.center { text-align: center; }
+    .section-header.center .section-sub { margin-left: auto; margin-right: auto; }
+
+    /* ── COMO FUNCIONA ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2px; max-width: 1200px; margin: 0 auto;
+      background: var(--border); border-radius: 24px; overflow: hidden;
+    }
+    .step {
+      background: var(--bg2); padding: 40px 32px;
+      display: flex; flex-direction: column; gap: 16px;
+      transition: background .2s;
+    }
+    .step:hover { background: var(--bg3); }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--orange-dim); border: 1px solid rgba(249,115,22,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; color: var(--orange);
+    }
+    .step h3 { font-size: 1.05rem; font-weight: 700; }
+    .step p { font-size: .9rem; color: var(--muted2); line-height: 1.6; }
+
+    /* ── DUPLA (PASSAGEIROS / MOTORISTAS) ── */
+    .dual-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 2px; max-width: 1200px; margin: 0 auto;
+      background: var(--border); border-radius: 28px; overflow: hidden;
+    }
+    .dual-col {
+      background: var(--bg2); padding: 52px 44px;
+    }
+    .dual-col h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+    .dual-col .col-sub { color: var(--muted2); font-size: .95rem; margin-bottom: 36px; }
+    .feature-list { list-style: none; display: flex; flex-direction: column; gap: 18px; }
+    .feature-list li {
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .feat-icon {
+      flex-shrink: 0;
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--orange-dim); border: 1px solid rgba(249,115,22,.2);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .feat-text strong { display: block; font-size: .95rem; font-weight: 600; margin-bottom: 2px; }
+    .feat-text span { font-size: .85rem; color: var(--muted2); }
+
+    /* ── DEPOIMENTOS ── */
+    .testimonials-bg { background: var(--bg2); }
+    .testimonials-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px; max-width: 1200px; margin: 0 auto;
+    }
+    .testimonial-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+    }
+    .stars { color: var(--orange); font-size: 14px; letter-spacing: 2px; margin-bottom: 16px; }
+    .testimonial-text { font-size: .95rem; color: var(--muted2); line-height: 1.7; margin-bottom: 24px; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .author-avatar {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: var(--orange-dim); border: 1px solid rgba(249,115,22,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .author-name { font-size: .9rem; font-weight: 700; }
+    .author-role { font-size: .8rem; color: var(--muted); }
+
+    /* ── DOWNLOAD ── */
+    .download-section {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .download-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 48px; flex-wrap: wrap;
+    }
+    .download-text { flex: 1; min-width: 280px; }
+    .download-text h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 800; letter-spacing: -1px; margin-bottom: 16px; }
+    .download-text p { color: var(--muted2); font-size: 1rem; max-width: 440px; }
+    .download-btns { display: flex; flex-direction: column; gap: 14px; }
+    .store-btn {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 24px; text-decoration: none;
+      min-width: 200px; transition: border-color .2s, transform .15s;
+    }
+    .store-btn:hover { border-color: rgba(249,115,22,.4); transform: translateY(-2px); }
+    .store-icon { font-size: 28px; line-height: 1; }
+    .store-text small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+    .store-text strong { display: block; font-size: 17px; color: var(--text); font-weight: 700; margin-top: 1px; }
+    .download-invite {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--orange-dim); border: 1px solid rgba(249,115,22,.25);
+      border-radius: 14px; padding: 14px 20px; margin-top: 4px;
+    }
+    .invite-icon { font-size: 22px; }
+    .invite-text { font-size: .85rem; color: var(--muted2); line-height: 1.5; }
+    .invite-text strong { color: var(--orange); }
+
+    /* ── DIFERENCIAIS ── */
+    .diff-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px; max-width: 1200px; margin: 0 auto;
+    }
+    .diff-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 32px 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .diff-card:hover { border-color: rgba(249,115,22,.3); transform: translateY(-4px); }
+    .diff-emoji { font-size: 32px; margin-bottom: 16px; }
+    .diff-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .diff-card p { font-size: .875rem; color: var(--muted2); line-height: 1.6; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 56px 5% 40px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-inner { max-width: 1200px; margin: 0 auto; }
+    .footer-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 40px; margin-bottom: 48px;
+    }
+    .footer-brand { max-width: 300px; }
+    .footer-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .footer-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: block; object-fit: cover;
+    }
+    .hero-logo-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .hero-logo-wrap img {
+      width: 280px;
+      max-width: 72vw;
+    }
+    .footer-logo-name { font-size: 20px; font-weight: 800; }
+    .footer-tagline { font-size: .875rem; color: var(--muted); line-height: 1.6; }
+    .footer-links h4 { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; }
+    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { color: var(--muted2); text-decoration: none; font-size: .9rem; transition: color .2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-bottom {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      padding-top: 32px; border-top: 1px solid var(--border);
+    }
+    .footer-bottom p { font-size: .8rem; color: var(--muted); }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-menu-btn { display: block; }
+      .lang-code { display: none; }
+      .dual-grid { grid-template-columns: 1fr; }
+      .dual-col { padding: 36px 28px; }
+      .download-inner { flex-direction: column; }
+      .footer-top { flex-direction: column; }
+      .hero-stats { gap: 28px; }
+    }
+    @media (max-width: 480px) {
+      section { padding: 72px 20px; }
+      nav { padding: 0 20px; }
+      .hero { padding: 110px 20px 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <img src="images/icon.png" class="nav-logo-icon" alt="Eluus" />
+    <span class="nav-logo-name">eluus</span>
+  </a>
+  <div class="nav-links">
+    <a href="#como-funciona" data-i18n="nav.howItWorks">Como funciona</a>
+    <a href="#passageiros" data-i18n="nav.passengers">Passageiros</a>
+    <a href="#motoristas" data-i18n="nav.drivers">Motoristas</a>
+    <a href="#download" class="nav-cta" data-i18n="nav.download">Baixar app</a>
+  </div>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="pt">🇧🇷 <span class="lang-code">PT</span></button>
+      <button class="lang-btn" data-lang="en">🇺🇸 <span class="lang-code">EN</span></button>
+      <button class="lang-btn" data-lang="es">🇪🇸 <span class="lang-code">ES</span></button>
+    </div>
+    <button class="nav-menu-btn" aria-label="Menu">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div>
+    <div class="hero-logo-wrap">
+      <img src="images/logo-completa.png" alt="Eluus" />
+    </div>
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      <span data-i18n="hero.badge">Convites disponíveis</span>
+    </div>
+    <h1 data-i18n-html="hero.titleHtml">Conexões que<br /><span>te levam</span></h1>
+    <p data-i18n="hero.sub">Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.</p>
+    <div class="hero-btns">
+      <a href="#download" class="btn-primary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        <span data-i18n="hero.btnDownload">Baixar grátis</span>
+      </a>
+      <a href="#como-funciona" class="btn-secondary">
+        <span data-i18n="hero.btnHow">Como funciona</span>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-value" data-i18n="hero.stat1val">100%</div>
+        <div class="stat-label" data-i18n="hero.stat1lbl">Motoristas conhecidos</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" data-i18n="hero.stat2val">R$0</div>
+        <div class="stat-label" data-i18n="hero.stat2lbl">Taxa de plataforma</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" data-i18n="hero.stat3val">Você</div>
+        <div class="stat-label" data-i18n="hero.stat3lbl">Define o valor</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" data-i18n="hero.stat4val">Privado</div>
+        <div class="stat-label" data-i18n="hero.stat4lbl">Só por convite</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMO FUNCIONA ── -->
+<section id="como-funciona">
+  <div class="section-header center">
+    <span class="section-label" data-i18n="how.label">Simples assim</span>
+    <h2 class="section-title" data-i18n="how.title">Como o Eluus funciona</h2>
+    <p class="section-sub" data-i18n="how.sub">Do convite à chegada, tudo pensado para ser rápido, seguro e direto.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3 data-i18n="how.s1title">Receba um convite</h3>
+      <p data-i18n="how.s1text">O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3 data-i18n="how.s2title">Crie sua conta</h3>
+      <p data-i18n="how.s2text">Cadastro rápido com nome, e-mail e CPF. Em minutos você já pode solicitar ou oferecer corridas.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3 data-i18n="how.s3title">Conecte-se</h3>
+      <p data-i18n="how.s3text">Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3 data-i18n="how.s4title">Viaje com confiança</h3>
+      <p data-i18n="how.s4text">Solicite ou aceite corridas. Valor combinado, chat integrado e navegação direto no mapa.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── DIFERENCIAIS ── -->
+<section style="background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+  <div class="section-header center">
+    <span class="section-label" data-i18n="diff.label">Por que Eluus</span>
+    <h2 class="section-title" data-i18n="diff.title">Diferente de tudo que você conhece</h2>
+    <p class="section-sub" data-i18n="diff.sub">Não somos um app de transporte comum. Somos uma rede de confiança com mobilidade.</p>
+  </div>
+  <div class="diff-grid">
+    <div class="diff-card">
+      <div class="diff-emoji">🔒</div>
+      <h3 data-i18n="diff.c1title">Acesso por convite</h3>
+      <p data-i18n="diff.c1text">Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.</p>
+    </div>
+    <div class="diff-card">
+      <div class="diff-emoji">💸</div>
+      <h3 data-i18n="diff.c2title">Sem taxas de plataforma</h3>
+      <p data-i18n="diff.c2text">O valor vai direto para o motorista. Nenhum percentual retido, nenhuma cobrança por corrida.</p>
+    </div>
+    <div class="diff-card">
+      <div class="diff-emoji">🎯</div>
+      <h3 data-i18n="diff.c3title">Passageiro define o valor</h3>
+      <p data-i18n="diff.c3text">Você sabe quanto seu motorista cobra por km e decide antes de solicitar. Transparência total.</p>
+    </div>
+    <div class="diff-card">
+      <div class="diff-emoji">💬</div>
+      <h3 data-i18n="diff.c4title">Chat integrado</h3>
+      <p data-i18n="diff.c4text">Comunique-se com o motorista diretamente pelo app durante toda a corrida, sem precisar de número.</p>
+    </div>
+    <div class="diff-card">
+      <div class="diff-emoji">🗺️</div>
+      <h3 data-i18n="diff.c5title">Navegação nativa</h3>
+      <p data-i18n="diff.c5text">Abre diretamente no Google Maps, Waze ou Apple Maps com o destino já preenchido.</p>
+    </div>
+    <div class="diff-card">
+      <div class="diff-emoji">⭐</div>
+      <h3 data-i18n="diff.c6title">Avaliações mútuas</h3>
+      <p data-i18n="diff.c6text">Passageiros e motoristas se avaliam após cada corrida, mantendo a qualidade da rede.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── PASSAGEIROS E MOTORISTAS ── -->
+<section id="passageiros">
+  <div class="section-header" style="max-width:1200px; margin: 0 auto 48px;">
+    <span class="section-label" data-i18n="for.label">Para todos</span>
+    <h2 class="section-title" data-i18n-html="for.titleHtml">Feito para passageiros<br />e motoristas</h2>
+  </div>
+  <div class="dual-grid" id="motoristas">
+    <div class="dual-col">
+      <h2 data-i18n="pass.title">🧍 Para passageiros</h2>
+      <p class="col-sub" data-i18n="pass.sub">Mobilidade com pessoas que você já confia.</p>
+      <ul class="feature-list">
+        <li>
+          <div class="feat-icon">🔍</div>
+          <div class="feat-text">
+            <strong data-i18n="pass.f1title">Veja motoristas disponíveis</strong>
+            <span data-i18n="pass.f1text">Acompanhe em tempo real quem está online na sua rede.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">📍</div>
+          <div class="feat-text">
+            <strong data-i18n="pass.f2title">Escolha o destino</strong>
+            <span data-i18n="pass.f2text">Busca inteligente de endereços com Google Maps. Salve casa e trabalho.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">💰</div>
+          <div class="feat-text">
+            <strong data-i18n="pass.f3title">Preço antes de confirmar</strong>
+            <span data-i18n="pass.f3text">Veja o valor total calculado com base na distância antes de solicitar.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">🔔</div>
+          <div class="feat-text">
+            <strong data-i18n="pass.f4title">Notificação de chegada</strong>
+            <span data-i18n="pass.f4text">O app avisa quando o motorista está a 200m do seu local.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">🕐</div>
+          <div class="feat-text">
+            <strong data-i18n="pass.f5title">Histórico completo</strong>
+            <span data-i18n="pass.f5text">Consulte todas as suas corridas com valores, datas e motoristas.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div class="dual-col" style="background: var(--bg3);">
+      <h2 data-i18n="driv.title">🚗 Para motoristas</h2>
+      <p class="col-sub" data-i18n="driv.sub">Ganhe dinheiro transportando pessoas da sua rede.</p>
+      <ul class="feature-list">
+        <li>
+          <div class="feat-icon">⚙️</div>
+          <div class="feat-text">
+            <strong data-i18n="driv.f1title">Defina seu preço por km</strong>
+            <span data-i18n="driv.f1text">Você controla quanto cobra. Sem tabela imposta por plataforma.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">📲</div>
+          <div class="feat-text">
+            <strong data-i18n="driv.f2title">Receba solicitações</strong>
+            <span data-i18n="driv.f2text">Notificação sonora e vibração a cada nova corrida disponível.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">✅</div>
+          <div class="feat-text">
+            <strong data-i18n="driv.f3title">Aceite ou recuse</strong>
+            <span data-i18n="driv.f3text">Você decide cada corrida. Sem penalidade por recusa.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">📡</div>
+          <div class="feat-text">
+            <strong data-i18n="driv.f4title">Rastreamento automático</strong>
+            <span data-i18n="driv.f4text">Sua localização é atualizada em tempo real durante a corrida.</span>
+          </div>
+        </li>
+        <li>
+          <div class="feat-icon">🎁</div>
+          <div class="feat-text">
+            <strong data-i18n="driv.f5title">Créditos por indicação</strong>
+            <span data-i18n="driv.f5text">Indique novos usuários e ganhe créditos extras para aceitar corridas.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── DEPOIMENTOS ── -->
+<section class="testimonials-bg">
+  <div class="section-header center">
+    <span class="section-label" data-i18n="test.label">Comunidade</span>
+    <h2 class="section-title" data-i18n="test.title">O que dizem quem usa</h2>
+    <p class="section-sub" data-i18n="test.sub">Pessoas reais, corridas reais, confiança real.</p>
+  </div>
+  <div class="testimonials-grid">
+    <div class="testimonial-card">
+      <div class="stars">★★★★★</div>
+      <p class="testimonial-text" data-i18n="test.t1text">"Finalmente um app onde eu sei quem está me buscando. Uso todo dia para ir ao trabalho com meu primo que é motorista. Simples, rápido e sem surpresa no preço."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">👩</div>
+        <div>
+          <div class="author-name" data-i18n="test.t1name">Camila R.</div>
+          <div class="author-role" data-i18n="test.t1role">Passageira, São Paulo</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars">★★★★★</div>
+      <p class="testimonial-text" data-i18n="test.t2text">"Trabalho como motorista no Eluus nos fins de semana e já tenho uma carteira fiel de passageiros. O melhor: fico com 100% do valor. Não tem plataforma comendo minha renda."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">👨</div>
+        <div>
+          <div class="author-name" data-i18n="test.t2name">Lucas M.</div>
+          <div class="author-role" data-i18n="test.t2role">Motorista, Campinas</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial-card">
+      <div class="stars">★★★★★</div>
+      <p class="testimonial-text" data-i18n="test.t3text">"Minha turma toda usa o Eluus para se locomover depois dos eventos. É muito mais seguro saber que o motorista é alguém que a gente conhece e confia."</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">🧑</div>
+        <div>
+          <div class="author-name" data-i18n="test.t3name">Fernanda S.</div>
+          <div class="author-role" data-i18n="test.t3role">Passageira, Curitiba</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DOWNLOAD ── -->
+<section class="download-section" id="download">
+  <div class="download-inner">
+    <div class="download-text">
+      <span class="section-label" data-i18n="dl.label">Disponível agora</span>
+      <h2 data-i18n-html="dl.titleHtml">Faça parte da<br />rede Eluus</h2>
+      <p data-i18n="dl.text">Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.</p>
+    </div>
+    <div class="download-btns">
+      <a href="#" class="store-btn">
+        <div class="store-icon">🤖</div>
+        <div class="store-text">
+          <small data-i18n="dl.androidSmall">Disponível no</small>
+          <strong data-i18n="dl.androidStrong">Google Play</strong>
+        </div>
+      </a>
+      <a href="#" class="store-btn">
+        <div class="store-icon">🍎</div>
+        <div class="store-text">
+          <small data-i18n="dl.iosSmall">Baixar na</small>
+          <strong data-i18n="dl.iosStrong">App Store</strong>
+        </div>
+      </a>
+      <div class="download-invite">
+        <div class="invite-icon">🔑</div>
+        <div class="invite-text" data-i18n-html="dl.inviteHtml">
+          Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <img src="images/icon.png" class="footer-logo-icon" alt="Eluus" />
+          <span class="footer-logo-name">eluus</span>
+        </div>
+        <p class="footer-tagline" data-i18n="foot.tagline">Conexões que te levam. Transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma.</p>
+      </div>
+      <div class="footer-links">
+        <h4 data-i18n="foot.appLabel">App</h4>
+        <ul>
+          <li><a href="#como-funciona" data-i18n="foot.lhow">Como funciona</a></li>
+          <li><a href="#passageiros" data-i18n="foot.lpass">Para passageiros</a></li>
+          <li><a href="#motoristas" data-i18n="foot.ldriv">Para motoristas</a></li>
+          <li><a href="#download" data-i18n="foot.ldl">Download</a></li>
+        </ul>
+      </div>
+      <div class="footer-links">
+        <h4 data-i18n="foot.legalLabel">Legal</h4>
+        <ul>
+          <li><a href="termos.html" data-i18n="foot.lterms">Termos de uso</a></li>
+          <li><a href="privacidade.html" data-i18n="foot.lprivacy">Política de privacidade</a></li>
+          <li><a href="consentimento-localizacao.html" data-i18n="foot.lloc">Uso de localização</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p data-i18n="foot.copy">© 2025 Eluus. Todos os direitos reservados.</p>
+      <p data-i18n="foot.made">Feito com ❤️ para quem valoriza confiança.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/i18next@23/dist/umd/i18next.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@7/dist/umd/i18nextBrowserLanguageDetector.min.js"></script>
+<script>
+(function () {
+  var resources = {
+    pt: {
+      translation: {
+        meta: {
+          title: "Eluus — Corridas com quem você confia",
+          description: "Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma."
+        },
+        nav: { howItWorks: "Como funciona", passengers: "Passageiros", drivers: "Motoristas", download: "Baixar app" },
+        hero: {
+          badge: "Convites disponíveis",
+          titleHtml: "Conexões que<br><span>te levam</span>",
+          sub: "Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.",
+          btnDownload: "Baixar grátis", btnHow: "Como funciona",
+          stat1val: "100%", stat1lbl: "Motoristas conhecidos",
+          stat2val: "R$0", stat2lbl: "Taxa de plataforma",
+          stat3val: "Você", stat3lbl: "Define o valor",
+          stat4val: "Privado", stat4lbl: "Só por convite"
+        },
+        how: {
+          label: "Simples assim", title: "Como o Eluus funciona",
+          sub: "Do convite à chegada, tudo pensado para ser rápido, seguro e direto.",
+          s1title: "Receba um convite", s1text: "O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.",
+          s2title: "Crie sua conta", s2text: "Cadastro rápido com nome, e-mail e CPF. Em minutos você já pode solicitar ou oferecer corridas.",
+          s3title: "Conecte-se", s3text: "Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.",
+          s4title: "Viaje com confiança", s4text: "Solicite ou aceite corridas. Valor combinado, chat integrado e navegação direto no mapa."
+        },
+        diff: {
+          label: "Por que Eluus", title: "Diferente de tudo que você conhece",
+          sub: "Não somos um app de transporte comum. Somos uma rede de confiança com mobilidade.",
+          c1title: "Acesso por convite", c1text: "Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.",
+          c2title: "Sem taxas de plataforma", c2text: "O valor vai direto para o motorista. Nenhum percentual retido, nenhuma cobrança por corrida.",
+          c3title: "Passageiro define o valor", c3text: "Você sabe quanto seu motorista cobra por km e decide antes de solicitar. Transparência total.",
+          c4title: "Chat integrado", c4text: "Comunique-se com o motorista diretamente pelo app durante toda a corrida, sem precisar de número.",
+          c5title: "Navegação nativa", c5text: "Abre diretamente no Google Maps, Waze ou Apple Maps com o destino já preenchido.",
+          c6title: "Avaliações mútuas", c6text: "Passageiros e motoristas se avaliam após cada corrida, mantendo a qualidade da rede."
+        },
+        for: { label: "Para todos", titleHtml: "Feito para passageiros<br>e motoristas" },
+        pass: {
+          title: "🧍 Para passageiros", sub: "Mobilidade com pessoas que você já confia.",
+          f1title: "Veja motoristas disponíveis", f1text: "Acompanhe em tempo real quem está online na sua rede.",
+          f2title: "Escolha o destino", f2text: "Busca inteligente de endereços com Google Maps. Salve casa e trabalho.",
+          f3title: "Preço antes de confirmar", f3text: "Veja o valor total calculado com base na distância antes de solicitar.",
+          f4title: "Notificação de chegada", f4text: "O app avisa quando o motorista está a 200m do seu local.",
+          f5title: "Histórico completo", f5text: "Consulte todas as suas corridas com valores, datas e motoristas."
+        },
+        driv: {
+          title: "🚗 Para motoristas", sub: "Ganhe dinheiro transportando pessoas da sua rede.",
+          f1title: "Defina seu preço por km", f1text: "Você controla quanto cobra. Sem tabela imposta por plataforma.",
+          f2title: "Receba solicitações", f2text: "Notificação sonora e vibração a cada nova corrida disponível.",
+          f3title: "Aceite ou recuse", f3text: "Você decide cada corrida. Sem penalidade por recusa.",
+          f4title: "Rastreamento automático", f4text: "Sua localização é atualizada em tempo real durante a corrida.",
+          f5title: "Créditos por indicação", f5text: "Indique novos usuários e ganhe créditos extras para aceitar corridas."
+        },
+        test: {
+          label: "Comunidade", title: "O que dizem quem usa", sub: "Pessoas reais, corridas reais, confiança real.",
+          t1text: "\"Finalmente um app onde eu sei quem está me buscando. Uso todo dia para ir ao trabalho com meu primo que é motorista. Simples, rápido e sem surpresa no preço.\"",
+          t1name: "Camila R.", t1role: "Passageira, São Paulo",
+          t2text: "\"Trabalho como motorista no Eluus nos fins de semana e já tenho uma carteira fiel de passageiros. O melhor: fico com 100% do valor. Não tem plataforma comendo minha renda.\"",
+          t2name: "Lucas M.", t2role: "Motorista, Campinas",
+          t3text: "\"Minha turma toda usa o Eluus para se locomover depois dos eventos. É muito mais seguro saber que o motorista é alguém que a gente conhece e confia.\"",
+          t3name: "Fernanda S.", t3role: "Passageira, Curitiba"
+        },
+        dl: {
+          label: "Disponível agora", titleHtml: "Faça parte da<br>rede Eluus",
+          text: "Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.",
+          androidSmall: "Disponível no", androidStrong: "Google Play",
+          iosSmall: "Baixar na", iosStrong: "App Store",
+          inviteHtml: "Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede."
+        },
+        foot: {
+          tagline: "Conexões que te levam. Transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma.",
+          appLabel: "App", legalLabel: "Legal",
+          lhow: "Como funciona", lpass: "Para passageiros", ldriv: "Para motoristas", ldl: "Download",
+          lterms: "Termos de uso", lprivacy: "Política de privacidade", lloc: "Uso de localização",
+          copy: "© 2025 Eluus. Todos os direitos reservados.",
+          made: "Feito com ❤️ para quem valoriza confiança."
+        }
+      }
+    },
+    en: {
+      translation: {
+        meta: {
+          title: "Eluus — Rides with people you trust",
+          description: "Eluus is the invite-only private transport app. Rides with people you know, no platform fees."
+        },
+        nav: { howItWorks: "How it works", passengers: "Passengers", drivers: "Drivers", download: "Download" },
+        hero: {
+          badge: "Invites available",
+          titleHtml: "Connections that<br><span>move you</span>",
+          sub: "Private transport with people you already know. No strangers, no platform fees, with total trust.",
+          btnDownload: "Download free", btnHow: "How it works",
+          stat1val: "100%", stat1lbl: "Known drivers",
+          stat2val: "$0", stat2lbl: "Platform fee",
+          stat3val: "You", stat3lbl: "Set the price",
+          stat4val: "Private", stat4lbl: "Invite only"
+        },
+        how: {
+          label: "That simple", title: "How Eluus works",
+          sub: "From invite to arrival, everything designed to be fast, safe, and straightforward.",
+          s1title: "Receive an invite", s1text: "Access to Eluus is exclusive by invite from someone in your network. No strangers in the system.",
+          s2title: "Create your account", s2text: "Quick sign-up with name and email. In minutes you can already request or offer rides.",
+          s3title: "Connect", s3text: "Add drivers or passengers from your network using their invite code or scanning their QR Code.",
+          s4title: "Ride with confidence", s4text: "Request or accept rides. Agreed price, integrated chat, and navigation directly on the map."
+        },
+        diff: {
+          label: "Why Eluus", title: "Different from everything you know",
+          sub: "We're not a regular transport app. We're a trust network with mobility.",
+          c1title: "Invite-only access", c1text: "Only people invited by someone already registered can join. Your network, your choice.",
+          c2title: "No platform fees", c2text: "The fare goes directly to the driver. No percentage withheld, no charge per ride.",
+          c3title: "Passenger sets the price", c3text: "You know how much your driver charges per km and decide before requesting. Full transparency.",
+          c4title: "Integrated chat", c4text: "Communicate with the driver directly through the app throughout the ride, no phone number needed.",
+          c5title: "Native navigation", c5text: "Opens directly in Google Maps, Waze or Apple Maps with the destination already filled in.",
+          c6title: "Mutual ratings", c6text: "Passengers and drivers rate each other after every ride, maintaining network quality."
+        },
+        for: { label: "For everyone", titleHtml: "Built for passengers<br>and drivers" },
+        pass: {
+          title: "🧍 For passengers", sub: "Mobility with people you already trust.",
+          f1title: "See available drivers", f1text: "Track in real time who is online in your network.",
+          f2title: "Choose your destination", f2text: "Smart address search with Google Maps. Save home and work.",
+          f3title: "Price before confirming", f3text: "See the total fare calculated by distance before requesting.",
+          f4title: "Arrival notification", f4text: "The app alerts you when the driver is 200m from your location.",
+          f5title: "Full history", f5text: "View all your rides with fares, dates and drivers."
+        },
+        driv: {
+          title: "🚗 For drivers", sub: "Earn money transporting people from your network.",
+          f1title: "Set your price per km", f1text: "You control how much you charge. No rate imposed by any platform.",
+          f2title: "Receive requests", f2text: "Sound notification and vibration for every new available ride.",
+          f3title: "Accept or decline", f3text: "You decide on every ride. No penalty for declining.",
+          f4title: "Automatic tracking", f4text: "Your location is updated in real time during the ride.",
+          f5title: "Referral credits", f5text: "Refer new users and earn extra credits to accept rides."
+        },
+        test: {
+          label: "Community", title: "What our users say", sub: "Real people, real rides, real trust.",
+          t1text: "\"Finally an app where I know who's picking me up. I use it every day to get to work with my cousin who's a driver. Simple, fast and no price surprises.\"",
+          t1name: "Camila R.", t1role: "Passenger, São Paulo",
+          t2text: "\"I work as a driver on Eluus on weekends and already have a loyal base of passengers. The best part: I keep 100% of the fare. No platform eating into my income.\"",
+          t2name: "Lucas M.", t2role: "Driver, Campinas",
+          t3text: "\"My whole crew uses Eluus to get around after events. It's so much safer knowing the driver is someone you know and trust.\"",
+          t3name: "Fernanda S.", t3role: "Passenger, Curitiba"
+        },
+        dl: {
+          label: "Available now", titleHtml: "Join the<br>Eluus network",
+          text: "Download the app, enter your invite code and start moving with confidence. Available for Android and iOS.",
+          androidSmall: "Get it on", androidStrong: "Google Play",
+          iosSmall: "Download on the", iosStrong: "App Store",
+          inviteHtml: "You need an <strong>invite code</strong> to create your account. Ask someone from your network."
+        },
+        foot: {
+          tagline: "Connections that move you. Private transport between people who know each other, with trust and no platform fees.",
+          appLabel: "App", legalLabel: "Legal",
+          lhow: "How it works", lpass: "For passengers", ldriv: "For drivers", ldl: "Download",
+          lterms: "Terms of use", lprivacy: "Privacy policy", lloc: "Location use",
+          copy: "© 2025 Eluus. All rights reserved.",
+          made: "Made with ❤️ for those who value trust."
+        }
+      }
+    },
+    es: {
+      translation: {
+        meta: {
+          title: "Eluus — Viajes con personas de confianza",
+          description: "Eluus es la app de transporte privado por invitación. Viajes con personas que conoces, sin comisiones de plataforma."
+        },
+        nav: { howItWorks: "Cómo funciona", passengers: "Pasajeros", drivers: "Conductores", download: "Descargar" },
+        hero: {
+          badge: "Invitaciones disponibles",
+          titleHtml: "Conexiones que<br><span>te mueven</span>",
+          sub: "Transporte privado con personas que ya conoces. Sin desconocidos, sin comisiones de plataforma, con total confianza.",
+          btnDownload: "Descargar gratis", btnHow: "Cómo funciona",
+          stat1val: "100%", stat1lbl: "Conductores conocidos",
+          stat2val: "R$0", stat2lbl: "Sin comisión",
+          stat3val: "Tú", stat3lbl: "Fijas el precio",
+          stat4val: "Privado", stat4lbl: "Solo por invitación"
+        },
+        how: {
+          label: "Así de simple", title: "Cómo funciona Eluus",
+          sub: "Desde la invitación hasta la llegada, todo pensado para ser rápido, seguro y directo.",
+          s1title: "Recibe una invitación", s1text: "El acceso a Eluus es exclusivo por invitación de alguien de tu red. Sin desconocidos en el sistema.",
+          s2title: "Crea tu cuenta", s2text: "Registro rápido con nombre y correo electrónico. En minutos ya puedes solicitar u ofrecer viajes.",
+          s3title: "Conéctate", s3text: "Agrega conductores o pasajeros de tu red usando el código de invitación o escaneando su código QR.",
+          s4title: "Viaja con confianza", s4text: "Solicita o acepta viajes. Precio acordado, chat integrado y navegación directo en el mapa."
+        },
+        diff: {
+          label: "Por qué Eluus", title: "Diferente a todo lo que conoces",
+          sub: "No somos una app de transporte común. Somos una red de confianza con movilidad.",
+          c1title: "Acceso por invitación", c1text: "Solo personas invitadas por alguien ya registrado entran a la plataforma. Tu red, tu elección.",
+          c2title: "Sin comisiones de plataforma", c2text: "El dinero va directo al conductor. Sin porcentaje retenido, sin cargo por viaje.",
+          c3title: "El pasajero fija el precio", c3text: "Sabes cuánto cobra tu conductor por km y decides antes de solicitar. Transparencia total.",
+          c4title: "Chat integrado", c4text: "Comunícate con el conductor directamente por la app durante todo el viaje, sin necesitar número.",
+          c5title: "Navegación nativa", c5text: "Abre directamente en Google Maps, Waze o Apple Maps con el destino ya cargado.",
+          c6title: "Evaluaciones mutuas", c6text: "Pasajeros y conductores se evalúan después de cada viaje, manteniendo la calidad de la red."
+        },
+        for: { label: "Para todos", titleHtml: "Creado para pasajeros<br>y conductores" },
+        pass: {
+          title: "🧍 Para pasajeros", sub: "Movilidad con personas en las que ya confías.",
+          f1title: "Ve conductores disponibles", f1text: "Sigue en tiempo real quién está en línea en tu red.",
+          f2title: "Elige tu destino", f2text: "Búsqueda inteligente de direcciones con Google Maps. Guarda casa y trabajo.",
+          f3title: "Precio antes de confirmar", f3text: "Mira el precio total calculado por distancia antes de solicitar.",
+          f4title: "Notificación de llegada", f4text: "La app te avisa cuando el conductor está a 200m de tu ubicación.",
+          f5title: "Historial completo", f5text: "Consulta todos tus viajes con precios, fechas y conductores."
+        },
+        driv: {
+          title: "🚗 Para conductores", sub: "Gana dinero transportando personas de tu red.",
+          f1title: "Fija tu precio por km", f1text: "Tú controlas cuánto cobras. Sin tarifa impuesta por ninguna plataforma.",
+          f2title: "Recibe solicitudes", f2text: "Notificación de sonido y vibración por cada nuevo viaje disponible.",
+          f3title: "Acepta o rechaza", f3text: "Tú decides cada viaje. Sin penalización por rechazo.",
+          f4title: "Rastreo automático", f4text: "Tu ubicación se actualiza en tiempo real durante el viaje.",
+          f5title: "Créditos por referido", f5text: "Refiere nuevos usuarios y gana créditos extra para aceptar viajes."
+        },
+        test: {
+          label: "Comunidad", title: "Lo que dicen nuestros usuarios", sub: "Personas reales, viajes reales, confianza real.",
+          t1text: "\"Por fin una app donde sé quién me va a buscar. La uso todos los días para ir al trabajo con mi primo que es conductor. Simple, rápido y sin sorpresas en el precio.\"",
+          t1name: "Camila R.", t1role: "Pasajera, São Paulo",
+          t2text: "\"Trabajo como conductor en Eluus los fines de semana y ya tengo una base fiel de pasajeros. Lo mejor: me quedo con el 100% de la tarifa. Ninguna plataforma se lleva mi ingreso.\"",
+          t2name: "Lucas M.", t2role: "Conductor, Campinas",
+          t3text: "\"Todo mi grupo usa Eluus para moverse después de los eventos. Es mucho más seguro saber que el conductor es alguien conocido y de confianza.\"",
+          t3name: "Fernanda S.", t3role: "Pasajera, Curitiba"
+        },
+        dl: {
+          label: "Disponible ahora", titleHtml: "Únete a la<br>red Eluus",
+          text: "Descarga la app, ingresa tu código de invitación y empieza a moverte con confianza. Disponible para Android e iOS.",
+          androidSmall: "Disponible en", androidStrong: "Google Play",
+          iosSmall: "Descargar en el", iosStrong: "App Store",
+          inviteHtml: "Necesitas un <strong>código de invitación</strong> para crear tu cuenta. Pídelo a alguien de tu red."
+        },
+        foot: {
+          tagline: "Conexiones que te mueven. Transporte privado entre personas que se conocen, con confianza y sin comisiones de plataforma.",
+          appLabel: "App", legalLabel: "Legal",
+          lhow: "Cómo funciona", lpass: "Para pasajeros", ldriv: "Para conductores", ldl: "Descargar",
+          lterms: "Términos de uso", lprivacy: "Política de privacidad", lloc: "Uso de ubicación",
+          copy: "© 2025 Eluus. Todos los derechos reservados.",
+          made: "Hecho con ❤️ para quienes valoran la confianza."
+        }
+      }
+    }
+  };
+
+  function getCurrentLang() {
+    var lng = i18next.language || 'pt';
+    if (lng.startsWith('pt')) return 'pt';
+    if (lng.startsWith('es')) return 'es';
+    return 'en';
+  }
+
+  function applyTranslations() {
+    var lang = getCurrentLang();
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang === 'es' ? 'es' : 'en';
+    document.title = i18next.t('meta.title');
+    var descEl = document.querySelector('meta[name="description"]');
+    if (descEl) descEl.setAttribute('content', i18next.t('meta.description'));
+    var ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', i18next.t('meta.title'));
+    var ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', i18next.t('meta.description'));
+
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = i18next.t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+      el.innerHTML = i18next.t(el.getAttribute('data-i18n-html'));
+    });
+    document.querySelectorAll('.lang-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+    });
+  }
+
+  i18next
+    .use(window.i18nextBrowserLanguageDetector)
+    .init({
+      resources: resources,
+      fallbackLng: 'pt',
+      load: 'languageOnly',
+      detection: {
+        order: ['localStorage', 'navigator'],
+        lookupLocalStorage: 'eluus_lang',
+        caches: ['localStorage']
+      },
+      interpolation: { escapeValue: false }
+    }, function () {
+      applyTranslations();
+    });
+
+  document.querySelectorAll('.lang-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var lang = this.getAttribute('data-lang');
+      i18next.changeLanguage(lang, function () {
+        applyTranslations();
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
