@@ -1,15 +1,6 @@
-import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Google from 'expo-auth-session/providers/google';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import {
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithCredential,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -20,11 +11,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from 'react-native';
-import { auth, db } from '../firebaseConfig';
-
-WebBrowser.maybeCompleteAuthSession();
+import { auth } from '../firebaseConfig';
 
 export default function Login() {
   const router = useRouter();
@@ -32,79 +20,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      handleSocialCredential(credential);
-    }
-  }, [response]);
-
-  const handleSocialCredential = async (credential: any) => {
-    setLoading(true);
-    try {
-      const userCredential = await signInWithCredential(auth, credential);
-      const uid = userCredential.user.uid;
-      const snap = await getDoc(doc(db, 'usuarios', uid));
-      if (snap.exists()) {
-        router.replace('/home');
-      } else {
-        const u = userCredential.user;
-        router.replace({
-          pathname: '/completar-cadastro',
-          params: {
-            nome: u.displayName || '',
-            email: u.email || '',
-          },
-        });
-      }
-    } catch (e: any) {
-      Alert.alert('Erro', 'Falha no login. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    try {
-      const appleCredential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      const provider = new OAuthProvider('apple.com');
-      const credential = provider.credential({
-        idToken: appleCredential.identityToken!,
-      });
-      const fullName = appleCredential.fullName;
-      const nome = [fullName?.givenName, fullName?.familyName].filter(Boolean).join(' ');
-      // displayName not set by Apple provider automatically — pass name via params
-      const userCred = await signInWithCredential(auth, credential);
-      const snap = await getDoc(doc(db, 'usuarios', userCred.user.uid));
-      if (snap.exists()) {
-        router.replace('/home');
-      } else {
-        router.replace({
-          pathname: '/completar-cadastro',
-          params: {
-            nome,
-            email: userCred.user.email || appleCredential.email || '',
-          },
-        });
-      }
-    } catch (e: any) {
-      if (e.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Erro', 'Falha no login com Apple. Tente novamente.');
-      }
-    }
-  };
 
   const entrar = async () => {
     if (!email || !senha) {
@@ -130,30 +45,6 @@ export default function Login() {
         style={styles.logo}
         resizeMode="contain"
       />
-
-      <TouchableOpacity
-        style={[styles.socialBtn, (!request || loading) && styles.socialBtnDisabled]}
-        onPress={() => promptAsync()}
-        disabled={!request || loading}>
-        <Text style={styles.socialIcon}>G</Text>
-        <Text style={styles.socialTxt}>Continuar com Google</Text>
-      </TouchableOpacity>
-
-      {Platform.OS === 'ios' && (
-        <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={14}
-          style={styles.appleBtn}
-          onPress={handleAppleSignIn}
-        />
-      )}
-
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerTxt}>ou</Text>
-        <View style={styles.dividerLine} />
-      </View>
 
       <TextInput
         style={styles.input}
@@ -202,48 +93,7 @@ const styles = StyleSheet.create({
   logo: {
     width: '100%',
     height: 100,
-    marginBottom: 32,
-  },
-  socialBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    gap: 10,
-  },
-  socialBtnDisabled: { opacity: 0.5 },
-  socialIcon: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4285F4',
-  },
-  socialTxt: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  appleBtn: {
-    width: '100%',
-    height: 54,
-    marginBottom: 10,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2a3044',
-  },
-  dividerTxt: {
-    color: '#4a5568',
-    fontSize: 13,
+    marginBottom: 48,
   },
   input: {
     backgroundColor: '#1a1f2e',
