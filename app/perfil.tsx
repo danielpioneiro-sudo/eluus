@@ -248,7 +248,10 @@ export default function Perfil() {
     setDeletandoConta(true);
     try {
       const uid = auth.currentUser?.uid;
-      if (!uid) return;
+      if (!uid) {
+        setDeletandoConta(false);
+        return;
+      }
       const [corridasPassSnap, corridasMotoSnap] = await Promise.all([
         getDocs(query(collection(db, 'corridas'), where('passageiroId', '==', uid))),
         getDocs(query(collection(db, 'corridas'), where('motoristaId', '==', uid))),
