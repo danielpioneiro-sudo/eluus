@@ -137,7 +137,14 @@
     "photoUpdated": "Photo updated! ✅",
     "myCode": "My code",
     "shareWithPassengers": "Share with your passengers",
-    "yourCode": "Your identification code"
+    "yourCode": "Your identification code",
+    "deleteAccount": "Delete my account",
+    "deleteAccountTitle": "Delete account",
+    "deleteAccountConfirmMsg": "Are you sure? This action is irreversible. All your data will be permanently deleted.",
+    "deleteAccountType": "Type DELETE to confirm",
+    "deleteAccountConfirmBtn": "Permanently delete",
+    "deleteAccountRecentLogin": "For security, please log out and log in again before deleting your account.",
+    "deleteAccountError": "Could not delete account. Please try again."
   },
   "historico": {
     "title": "History",

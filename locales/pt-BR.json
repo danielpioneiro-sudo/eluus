@@ -137,7 +137,14 @@
     "photoUpdated": "Foto atualizada! ✅",
     "myCode": "Meu código",
     "shareWithPassengers": "Compartilhe com seus passageiros",
-    "yourCode": "Seu código de identificação"
+    "yourCode": "Seu código de identificação",
+    "deleteAccount": "Excluir minha conta",
+    "deleteAccountTitle": "Excluir conta",
+    "deleteAccountConfirmMsg": "Tem certeza? Esta ação é irreversível. Todos seus dados serão deletados permanentemente.",
+    "deleteAccountType": "Digite DELETE para confirmar",
+    "deleteAccountConfirmBtn": "Excluir permanentemente",
+    "deleteAccountRecentLogin": "Por segurança, faça logout e login novamente antes de excluir sua conta.",
+    "deleteAccountError": "Não foi possível excluir a conta. Tente novamente."
   },
   "historico": {
     "title": "Histórico",

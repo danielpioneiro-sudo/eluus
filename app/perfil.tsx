@@ -2,8 +2,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { changeLang, LANGUAGES } from '../i18n';
-import { EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, updateEmail, updatePassword } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { EmailAuthProvider, deleteUser, reauthenticateWithCredential, sendEmailVerification, updateEmail, updatePassword } from 'firebase/auth';
+import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -45,6 +45,9 @@ export default function Perfil() {
   const [mostrarQR, setMostrarQR] = useState(false);
   const [modalSenha, setModalSenha] = useState(false);
   const [modalEmail, setModalEmail] = useState(false);
+  const [modalExcluirConta, setModalExcluirConta] = useState(false);
+  const [confirmacaoTexto, setConfirmacaoTexto] = useState('');
+  const [deletandoConta, setDeletandoConta] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -227,6 +230,46 @@ export default function Perfil() {
       Alert.alert('Código atualizado!', `Seu novo código é ${novoCodigo}`);
     } catch (e) { Alert.alert('Erro', 'Não foi possível atualizar o código'); }
     setSalvandoCodigo(false);
+  };
+
+  const confirmarExcluirConta = () => {
+    Alert.alert(
+      t('perfil.deleteAccountTitle'),
+      t('perfil.deleteAccountConfirmMsg'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.confirm'), style: 'destructive', onPress: () => setModalExcluirConta(true) },
+      ]
+    );
+  };
+
+  const excluirConta = async () => {
+    if (confirmacaoTexto !== 'DELETE') return;
+    setDeletandoConta(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const [corridasPassSnap, corridasMotoSnap] = await Promise.all([
+        getDocs(query(collection(db, 'corridas'), where('passageiroId', '==', uid))),
+        getDocs(query(collection(db, 'corridas'), where('motoristaId', '==', uid))),
+      ]);
+      const batch = writeBatch(db);
+      corridasPassSnap.forEach(d => batch.delete(d.ref));
+      corridasMotoSnap.forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, 'usuarios', uid));
+      await batch.commit();
+      await deleteUser(auth.currentUser!);
+      router.replace('/');
+    } catch (e: any) {
+      setModalExcluirConta(false);
+      setConfirmacaoTexto('');
+      if (e.code === 'auth/requires-recent-login') {
+        Alert.alert(t('common.error'), t('perfil.deleteAccountRecentLogin'));
+      } else {
+        Alert.alert(t('common.error'), t('perfil.deleteAccountError'));
+      }
+    }
+    setDeletandoConta(false);
   };
 
   const iniciais = nome.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
@@ -501,6 +544,45 @@ export default function Perfil() {
         </View>
       </Modal>
 
+      {/* Excluir conta */}
+      <TouchableOpacity style={styles.excluirContaBtn} onPress={confirmarExcluirConta}>
+        <Text style={styles.excluirContaTxt}>{t('perfil.deleteAccount')}</Text>
+      </TouchableOpacity>
+
+      {/* Modal — Excluir conta */}
+      <Modal visible={modalExcluirConta} transparent animationType="slide" onRequestClose={() => { setModalExcluirConta(false); setConfirmacaoTexto(''); }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitulo}>{t('perfil.deleteAccountTitle')}</Text>
+            <Text style={[styles.label, { color: '#ef4444', fontSize: 14, lineHeight: 20, marginBottom: 16 }]}>
+              {t('perfil.deleteAccountConfirmMsg')}
+            </Text>
+            <Text style={styles.label}>{t('perfil.deleteAccountType')}</Text>
+            <TextInput
+              style={[styles.input, { borderColor: confirmacaoTexto === 'DELETE' ? '#ef4444' : '#2a3044' }]}
+              value={confirmacaoTexto}
+              onChangeText={setConfirmacaoTexto}
+              placeholder="DELETE"
+              placeholderTextColor="#4a5568"
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={[styles.modalBtn, { backgroundColor: confirmacaoTexto === 'DELETE' ? '#ef4444' : '#374151' }]}
+              onPress={excluirConta}
+              disabled={confirmacaoTexto !== 'DELETE' || deletandoConta}
+            >
+              {deletandoConta
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.modalBtnTxt}>{t('perfil.deleteAccountConfirmBtn')}</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setModalExcluirConta(false); setConfirmacaoTexto(''); }} disabled={deletandoConta}>
+              <Text style={styles.modalCancelar}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={{ height: 40 }} />
     </ScrollView>
     </KeyboardAvoidingView>
@@ -575,4 +657,6 @@ const styles = StyleSheet.create({
   langFlag: { fontSize: 24 },
   langTxt: { color: '#64748b', fontSize: 11, fontWeight: '600' },
   langTxtAtivo: { color: '#4a9eff' },
+  excluirContaBtn: { alignItems: 'center', paddingVertical: 20, marginTop: 8 },
+  excluirContaTxt: { color: '#ef4444', fontSize: 14, opacity: 0.7 },
 });

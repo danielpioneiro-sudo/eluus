@@ -14,7 +14,6 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
       "buildNumber": "2",
-      "usesAppleSignIn": true,
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -43,7 +42,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-apple-authentication",
       [
         "expo-notifications",
         {
@@ -67,7 +65,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "O eluus precisa da sua localização para calcular corridas."
+          "locationAlwaysAndWhenInUsePermission": "O Eluus usa sua localização para calcular rotas e valores de corridas, mostrar motoristas próximos e compartilhar sua posição com o motorista durante a corrida.",
+          "locationWhenInUsePermission": "O Eluus usa sua localização para calcular rotas e valores de corridas, mostrar motoristas próximos e compartilhar sua posição com o motorista durante a corrida."
         }
       ]
     ],
