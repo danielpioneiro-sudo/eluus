@@ -13,7 +13,7 @@
       "bundleIdentifier": "app.eluus.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
@@ -34,7 +34,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "app.eluus.app",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "output": "static",
