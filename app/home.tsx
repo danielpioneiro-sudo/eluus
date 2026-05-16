@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -8,16 +9,19 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    verificarTipo();
-  }, []);
-
-  const verificarTipo = async () => {
-    try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      if (!user) {
         router.replace('/');
         return;
       }
+      verificarTipo(user.uid);
+    });
+    return unsub;
+  }, []);
+
+  const verificarTipo = async (uid: string) => {
+    try {
       const userDoc = await getDoc(doc(db, 'usuarios', uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
