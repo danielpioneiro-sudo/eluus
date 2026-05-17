@@ -154,7 +154,9 @@ export default function Cadastro() {
         }
       }
 
+      console.log('[cadastro] criando conta para:', emailLimpo);
       const cred = await createUserWithEmailAndPassword(auth, emailLimpo, senha);
+      console.log('[cadastro] conta criada:', cred.user.uid);
       await sendEmailVerification(cred.user).catch(() => null);
 
       if (isBrasil) {
@@ -191,12 +193,15 @@ export default function Cadastro() {
       await AsyncStorage.setItem('@eluus_ultimo_cadastro', Date.now().toString()).catch(() => null);
 
       if (isBrasil) {
+        console.log('[cadastro] cadastro BR concluído, navegando para /home');
         Alert.alert('Bem-vindo ao eluus!', 'Conta criada com sucesso!');
-        router.replace('/');
+        router.replace('/home');
       } else {
+        console.log('[cadastro] cadastro internacional, navegando para verificar-telefone');
         router.replace({ pathname: '/verificar-telefone', params: { telefone: telefone.trim() } });
       }
     } catch (e: any) {
+      console.error('[cadastro] erro:', e.code, e.message);
       if (e.code === 'auth/email-already-in-use') {
         Alert.alert('Erro', 'Este e-mail já está cadastrado');
       } else {

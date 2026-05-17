@@ -28,12 +28,16 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
+      console.log('[login] iniciando signIn para:', email.trim().toLowerCase());
+      await signInWithEmailAndPassword(auth, email.trim(), senha);
+      console.log('[login] signIn OK, navegando para /home');
       router.replace('/home');
     } catch (e: any) {
+      console.error('[login] signIn error:', e.code, e.message);
       Alert.alert('Erro', 'E-mail ou senha incorretos');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
