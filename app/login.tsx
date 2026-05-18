@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { auth } from '../firebaseConfig';
+import { navegarDashboard } from '../utils/navegarDashboard';
 
 export default function Login() {
   const router = useRouter();
@@ -29,9 +30,9 @@ export default function Login() {
     setLoading(true);
     try {
       console.log('[login] iniciando signIn para:', email.trim().toLowerCase());
-      await signInWithEmailAndPassword(auth, email.trim(), senha);
-      console.log('[login] signIn OK, navegando para /home');
-      router.replace('/home');
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), senha);
+      console.log('[login] signIn OK, consultando dashboard para:', credential.user.uid);
+      await navegarDashboard(credential.user.uid, router);
     } catch (e: any) {
       console.error('[login] signIn error:', e.code, e.message);
       Alert.alert('Erro', 'E-mail ou senha incorretos');

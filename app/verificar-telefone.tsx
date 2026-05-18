@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PhoneAuthProvider, linkWithCredential } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
+import { navegarDashboard } from '../utils/navegarDashboard';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -112,7 +113,8 @@ export default function VerificarTelefone() {
         phoneVerified: true,
         telefone: telefone.trim(),
       });
-      router.replace('/home');
+      console.log('[verificar-telefone] verificação OK, consultando dashboard');
+      await navegarDashboard(uid, router);
     } catch (e: any) {
       if (e.code === 'auth/invalid-verification-code') {
         Alert.alert('Código incorreto', 'Verifique o código e tente novamente.');

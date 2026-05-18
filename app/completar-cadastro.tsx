@@ -170,7 +170,9 @@ export default function CompletarCadastro() {
       await AsyncStorage.setItem('@eluus_ultimo_cadastro', Date.now().toString()).catch(() => null);
 
       if (isBrasil) {
-        router.replace('/home');
+        const destino = tipo === 'motorista' ? '/motorista' : '/passageiro';
+        console.log('[completar-cadastro] BR concluído, navegando para', destino);
+        router.replace(destino);
       } else {
         router.replace({ pathname: '/verificar-telefone', params: { telefone: telefone.trim() } });
       }

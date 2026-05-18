@@ -193,9 +193,10 @@ export default function Cadastro() {
       await AsyncStorage.setItem('@eluus_ultimo_cadastro', Date.now().toString()).catch(() => null);
 
       if (isBrasil) {
-        console.log('[cadastro] cadastro BR concluído, navegando para /home');
+        const destino = tipo === 'motorista' ? '/motorista' : '/passageiro';
+        console.log('[cadastro] cadastro BR concluído, navegando para', destino);
         Alert.alert('Bem-vindo ao eluus!', 'Conta criada com sucesso!');
-        router.replace('/home');
+        router.replace(destino);
       } else {
         console.log('[cadastro] cadastro internacional, navegando para verificar-telefone');
         router.replace({ pathname: '/verificar-telefone', params: { telefone: telefone.trim() } });
