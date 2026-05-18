@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { auth } from '../../firebaseConfig';
+import { navegarDashboard } from '../../utils/navegarDashboard';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -11,9 +12,11 @@ export default function HomeScreen() {
   const [verificando, setVerificando] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
+    // One-shot: unsub imediatamente para não interferir com navegação do login
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      unsub();
       if (user) {
-        router.replace('/home');
+        await navegarDashboard(user.uid, router);
       } else {
         setVerificando(false);
       }
