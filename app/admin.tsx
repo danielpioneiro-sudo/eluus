@@ -14,10 +14,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db, functions } from '../firebaseConfig';
 
 export default function Admin() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [verificando, setVerificando] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [emailBusca, setEmailBusca] = useState('');
@@ -202,7 +204,7 @@ export default function Admin() {
           )}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

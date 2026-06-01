@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useEffect, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -17,9 +18,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  endConnection,
+  ErrorCode,
+  fetchProducts,
+  finishTransaction,
+  getReceiptIOS,
+  initConnection,
+  purchaseErrorListener,
+  purchaseUpdatedListener,
+  requestPurchase,
+  type ProductIOS,
+  type Purchase,
+  type PurchaseError,
+} from 'react-native-iap';
 import { auth, db, functions } from '../firebaseConfig';
 
-// Detecta se o dispositivo é do Brasil (locale pt-BR ou timezone Brasil)
 const isBrazil = (): boolean => {
   const locales = Localization.getLocales();
   const locale = locales[0];
@@ -30,18 +44,23 @@ const isBrazil = (): boolean => {
     tz.startsWith('America/Manaus') || tz.startsWith('America/Belem') || tz.includes('Brazil');
 };
 
-const PACOTES = [
-  { id: '30',  corridas: 30,  valor: 'R$ 29',  valorNum: 29,  priceUnit: 'R$ 0,97/corrida', descricao: 'Ideal para começar',    destaque: false },
-  { id: '50',  corridas: 50,  valor: 'R$ 39',  valorNum: 39,  priceUnit: 'R$ 0,78/corrida', descricao: 'Mais popular ⭐',       destaque: true },
-  { id: '100', corridas: 100, valor: 'R$ 69',  valorNum: 69,  priceUnit: 'R$ 0,69/corrida', descricao: 'Melhor custo-benefício', destaque: false },
-  { id: '200', corridas: 200, valor: 'R$ 119', valorNum: 119, priceUnit: 'R$ 0,59/corrida', descricao: 'Pacote profissional',    destaque: false },
+const PACOTES_BASE = [
+  { id: '30',  sku: 'com.eluus.corridas30',  corridas: 30,  valor: 'R$ 29',  valorNum: 29,  priceUnit: 'R$ 0,97/corrida', descricaoKey: 'idealToStart',    destaque: false },
+  { id: '50',  sku: 'com.eluus.corridas50',  corridas: 50,  valor: 'R$ 39',  valorNum: 39,  priceUnit: 'R$ 0,78/corrida', descricaoKey: 'mostPopularDesc', destaque: true  },
+  { id: '100', sku: 'com.eluus.corridas100', corridas: 100, valor: 'R$ 69',  valorNum: 69,  priceUnit: 'R$ 0,69/corrida', descricaoKey: 'bestValue',       destaque: false },
+  { id: '200', sku: 'com.eluus.corridas200', corridas: 200, valor: 'R$ 119', valorNum: 119, priceUnit: 'R$ 0,59/corrida', descricaoKey: 'superPack',       destaque: false },
 ];
+
+const IAP_SKUS = PACOTES_BASE.map(p => p.sku);
 
 export default function Comprar() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [creditos, setCreditos] = useState(0);
   const [carregando, setCarregando] = useState<string | null>(null);
+
+  // Android — estado do modal PIX
   const [modalPix, setModalPix] = useState(false);
   const [qrCode, setQrCode] = useState('');
   const [qrCodeBase64, setQrCodeBase64] = useState('');
@@ -49,8 +68,13 @@ export default function Comprar() {
   const [pago, setPago] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unsubPedidoRef = useRef<(() => void) | null>(null);
+
+  // iOS — produtos da App Store
+  const [iapProdutos, setIapProdutos] = useState<ProductIOS[]>([]);
+
   const brasil = isBrazil();
 
+  // Saldo em tempo real
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
@@ -60,6 +84,55 @@ export default function Comprar() {
     return () => unsub();
   }, []);
 
+  // IAP (iOS apenas)
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    let purchaseListener: ReturnType<typeof purchaseUpdatedListener>;
+    let errorListener: ReturnType<typeof purchaseErrorListener>;
+
+    const setup = async () => {
+      try {
+        await initConnection();
+        const products = await fetchProducts({ skus: IAP_SKUS, type: 'in-app' });
+        setIapProdutos(products as ProductIOS[]);
+
+        purchaseListener = purchaseUpdatedListener(async (purchase: Purchase) => {
+          try {
+            const receipt = await getReceiptIOS();
+            if (!receipt) throw new Error('Receipt não obtido');
+            const verifyFn = httpsCallable(functions, 'verifyAppleReceipt');
+            await verifyFn({ receiptData: receipt, productId: purchase.productId });
+            await finishTransaction({ purchase, isConsumable: true });
+            setPago(true);
+          } catch (e: any) {
+            Alert.alert(t('comprar.errPagamento'), e.message || t('comprar.errPayment'));
+            await finishTransaction({ purchase, isConsumable: true });
+          }
+          setCarregando(null);
+        });
+
+        errorListener = purchaseErrorListener((error: PurchaseError) => {
+          if (error.code !== ErrorCode.UserCancelled) {
+            Alert.alert(t('comprar.errPagamento'), error.message || t('comprar.errPayment'));
+          }
+          setCarregando(null);
+        });
+      } catch (e) {
+        console.error('[IAP] initConnection error:', e);
+      }
+    };
+
+    setup();
+
+    return () => {
+      purchaseListener?.remove();
+      errorListener?.remove();
+      endConnection();
+    };
+  }, []);
+
+  // Cleanup timers Android
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -67,7 +140,21 @@ export default function Comprar() {
     };
   }, []);
 
-  // ── PIX (Android Brasil) ──────────────────────────────────
+  // ── iOS: StoreKit IAP ─────────────────────────────────────
+  const comprarIAP = async (sku: string) => {
+    setCarregando(sku);
+    setPago(false);
+    try {
+      await requestPurchase({ request: { apple: { sku } }, type: 'in-app' });
+    } catch (e: any) {
+      if (e.code !== 'E_USER_CANCELLED') {
+        Alert.alert(t('comprar.errPagamento'), e.message || t('comprar.errPayment'));
+      }
+      setCarregando(null);
+    }
+  };
+
+  // ── Android: PIX ──────────────────────────────────────────
   const comprarPix = async (pacoteId: string) => {
     setCarregando(pacoteId);
     try {
@@ -82,12 +169,12 @@ export default function Comprar() {
       iniciarTimer();
       escutarPedido(pedidoId);
     } catch (e: any) {
-      Alert.alert('Erro ao gerar PIX', e.message || 'Tente novamente');
+      Alert.alert(t('comprar.errPix'), e.message || 'Tente novamente');
     }
     setCarregando(null);
   };
 
-  // ── PayPal (Android todos os países) ─────────────────────
+  // ── Android: PayPal ───────────────────────────────────────
   const comprarPayPal = async (pacoteId: string, valorNum: number) => {
     setCarregando(`paypal_${pacoteId}`);
     try {
@@ -98,12 +185,16 @@ export default function Comprar() {
       escutarPedido(pedidoId);
       await Linking.openURL(approvalUrl);
     } catch (e: any) {
-      Alert.alert('Erro PayPal', e.message || 'Não foi possível iniciar o pagamento');
+      Alert.alert(t('comprar.errPayPal'), e.message || t('comprar.errPayment'));
     }
     setCarregando(null);
   };
 
-  const handleComprar = (pacote: typeof PACOTES[0]) => {
+  const handleComprar = (pacote: typeof PACOTES_BASE[0]) => {
+    if (Platform.OS === 'ios') {
+      comprarIAP(pacote.sku);
+      return;
+    }
     if (brasil) {
       Alert.alert(
         t('comprar.paymentMethod'),
@@ -122,9 +213,9 @@ export default function Comprar() {
   const iniciarTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setTimer(t => {
-        if (t <= 1) { clearInterval(timerRef.current!); fecharModal(); return 0; }
-        return t - 1;
+      setTimer(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current!); fecharModal(); return 0; }
+        return prev - 1;
       });
     }, 1000);
   };
@@ -155,33 +246,42 @@ export default function Comprar() {
   };
 
   const copiarCodigo = () => {
-    Alert.alert('Código PIX Copia e Cola', qrCode, [{ text: 'Fechar' }]);
+    Alert.alert(t('comprar.pixCopyTitle'), qrCode, [{ text: t('common.close') }]);
   };
 
-  const labelMetodoPagamento = brasil ? t('comprar.pixAndPaypal') : 'PayPal';
+  const getPrecoIos = (sku: string): string => {
+    const produto = iapProdutos.find(p => p.id === sku);
+    return produto?.displayPrice || '';
+  };
+
+  const labelMetodoPagamento = Platform.OS === 'ios'
+    ? 'App Store'
+    : brasil ? t('comprar.pixAndPaypal') : 'PayPal';
+
+  const renderSucessoContent = (onClose: () => void) => (
+    <>
+      <Text style={styles.pagoEmoji}>✅</Text>
+      <Text style={styles.pagoTitulo}>{t('comprar.paymentConfirmed')}</Text>
+      <Text style={styles.pagoSub}>{t('comprar.creditsAdded')}</Text>
+      <View style={styles.pagoSaldoRow}>
+        <Text style={styles.pagoSaldoLabel}>{t('comprar.newBalance')}</Text>
+        <Text style={styles.pagoSaldoNum}>{creditos}</Text>
+        <Text style={styles.pagoSaldoLabel}> {t('comprar.credits')}</Text>
+      </View>
+      <TouchableOpacity style={styles.pagoBtn} onPress={onClose}>
+        <Text style={styles.pagoBtnTxt}>{t('comprar.continue')}</Text>
+      </TouchableOpacity>
+    </>
+  );
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
-      {/* Modal PIX */}
+      {/* Modal PIX (Android) */}
       <Modal visible={modalPix} transparent animationType="slide" onRequestClose={fecharModal}>
         <View style={styles.pixOverlay}>
           <View style={styles.pixCard}>
-            {pago ? (
-              <>
-                <Text style={styles.pagoEmoji}>✅</Text>
-                <Text style={styles.pagoTitulo}>{t('comprar.paymentConfirmed')}</Text>
-                <Text style={styles.pagoSub}>{t('comprar.creditsAdded')}</Text>
-                <View style={styles.pagoSaldoRow}>
-                  <Text style={styles.pagoSaldoLabel}>{t('comprar.newBalance')}</Text>
-                  <Text style={styles.pagoSaldoNum}>{creditos}</Text>
-                  <Text style={styles.pagoSaldoLabel}> {t('comprar.credits')}</Text>
-                </View>
-                <TouchableOpacity style={styles.pagoBtn} onPress={fecharModal}>
-                  <Text style={styles.pagoBtnTxt}>{t('comprar.continue')}</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
+            {pago ? renderSucessoContent(fecharModal) : (
               <>
                 <Text style={styles.pixTitulo}>{t('comprar.payWithPix')}</Text>
                 <Text style={styles.pixTimer}>⏱ {formatarTimer(timer)}</Text>
@@ -190,7 +290,7 @@ export default function Comprar() {
                 ) : (
                   <ActivityIndicator color="#4a9eff" size="large" style={{ margin: 40 }} />
                 )}
-                <Text style={styles.pixInstrucao}>Ou use o código copia e cola:</Text>
+                <Text style={styles.pixInstrucao}>{t('comprar.pixInstrucao')}</Text>
                 <TouchableOpacity style={styles.copiaBox} onPress={copiarCodigo}>
                   <Text style={styles.copiaTxt} numberOfLines={2}>{qrCode}</Text>
                   <Text style={styles.copiaBtn}>📋 Copiar</Text>
@@ -208,10 +308,19 @@ export default function Comprar() {
         </View>
       </Modal>
 
+      {/* Modal de sucesso IAP (iOS) */}
+      <Modal visible={pago && Platform.OS === 'ios'} transparent animationType="slide" onRequestClose={() => setPago(false)}>
+        <View style={styles.pixOverlay}>
+          <View style={styles.pixCard}>
+            {renderSucessoContent(() => setPago(false))}
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
-          <Text style={styles.voltarTxt}>← Voltar</Text>
+          <Text style={styles.voltarTxt}>{t('common.back')}</Text>
         </TouchableOpacity>
         <Text style={styles.titulo}>{t('comprar.title')}</Text>
       </View>
@@ -225,18 +334,22 @@ export default function Comprar() {
         <Text style={styles.saldoSub}>{t('comprar.creditsLabel')}</Text>
       </View>
 
-      {/* Indicador de método de pagamento */}
+      {/* Método de pagamento */}
       <View style={styles.metodoCard}>
         <Text style={styles.metodoLabel}>
-          {brasil ? '🏦' : '🔵'} {labelMetodoPagamento}
+          {Platform.OS === 'ios' ? '🍎' : brasil ? '🏦' : '🔵'} {labelMetodoPagamento}
         </Text>
       </View>
 
       {/* Pacotes */}
       <Text style={styles.secaoTitulo}>{t('comprar.choosePlan')}</Text>
 
-      {PACOTES.map(p => {
-        const isLoading = carregando === p.id || carregando === `paypal_${p.id}`;
+      {PACOTES_BASE.map(p => {
+        const loadingKey = Platform.OS === 'ios' ? p.sku : p.id;
+        const isLoading = carregando === loadingKey || carregando === `paypal_${p.id}`;
+        const descricao = t(`comprar.${p.descricaoKey}`);
+        const precoExibido = Platform.OS === 'ios' ? (getPrecoIos(p.sku) || p.valor) : p.valor;
+
         return (
           <TouchableOpacity
             key={p.id}
@@ -256,14 +369,14 @@ export default function Comprar() {
               <Text style={styles.pacoteLabel}>{t('comprar.rides')}</Text>
             </View>
             <View style={styles.pacoteCenter}>
-              <Text style={styles.pacoteDescricao}>{p.descricao}</Text>
+              <Text style={styles.pacoteDescricao}>{descricao}</Text>
               <Text style={styles.pacoteKm}>{p.priceUnit}</Text>
             </View>
             <View style={styles.pacoteRight}>
-              <Text style={[styles.pacoteValor, p.destaque && styles.pacoteValorDestaque]}>{p.valor}</Text>
+              <Text style={[styles.pacoteValor, p.destaque && styles.pacoteValorDestaque]}>{precoExibido}</Text>
               {isLoading
                 ? <ActivityIndicator color="#4a9eff" size="small" />
-                : <Text style={styles.pacoteSeta}>{brasil ? '🏦/🔵' : '🔵'}</Text>
+                : <Text style={styles.pacoteSeta}>{Platform.OS === 'ios' ? '🍎' : brasil ? '🏦/🔵' : '🔵'}</Text>
               }
             </View>
           </TouchableOpacity>
@@ -276,7 +389,7 @@ export default function Comprar() {
         <Text style={styles.indicacaoTxt}>{t('comprar.referralMsg')}</Text>
       </View>
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: insets.bottom + 24 }} />
     </ScrollView>
   );
 }
@@ -312,7 +425,7 @@ const styles = StyleSheet.create({
   indicacaoCard: { backgroundColor: '#0f2a1a', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 8, borderWidth: 1, borderColor: '#22c55e' },
   indicacaoEmoji: { fontSize: 24 },
   indicacaoTxt: { flex: 1, color: '#94a3b8', fontSize: 13, lineHeight: 20 },
-  // Modal PIX
+  // Modal PIX / sucesso
   pixOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'flex-end' },
   pixCard: { backgroundColor: '#13161e', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, alignItems: 'center', gap: 14, borderTopWidth: 1, borderColor: '#2a3044' },
   pixTitulo: { color: '#fff', fontWeight: 'bold', fontSize: 22 },
@@ -325,7 +438,6 @@ const styles = StyleSheet.create({
   pixAguardando: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pixAguardandoTxt: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
   pixCancelar: { color: '#4a5568', fontSize: 14 },
-  // Pago
   pagoEmoji: { fontSize: 56 },
   pagoTitulo: { color: '#22c55e', fontWeight: 'bold', fontSize: 22 },
   pagoSub: { color: '#94a3b8', fontSize: 14, textAlign: 'center' },

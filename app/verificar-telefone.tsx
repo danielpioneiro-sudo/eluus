@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { auth, db, firebaseConfig } from '../firebaseConfig';
 
@@ -32,6 +33,7 @@ class AppVerifier {
   }
   onToken(t: string) { this._res?.(t); this._res = null; this._rej = null; }
   onError(m = 'Verificação falhou') { this._rej?.(new Error(m)); this._res = null; this._rej = null; }
+  _reset() {}
 }
 
 const RC_HTML = `<!DOCTYPE html><html><head>
@@ -59,6 +61,7 @@ window.addEventListener('load',function(){
 
 export default function VerificarTelefone() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { telefone: telefoneParam = '' } = useLocalSearchParams<{ telefone: string }>();
 
   const [telefone, setTelefone] = useState(typeof telefoneParam === 'string' ? telefoneParam : '');
@@ -161,7 +164,7 @@ export default function VerificarTelefone() {
         </View>
       </Modal>
 
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         <View style={styles.iconCircle}>
           <Text style={styles.iconEmoji}>📱</Text>

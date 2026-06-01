@@ -8,6 +8,8 @@ import {
 import { collection, doc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { auth, db } from '../firebaseConfig';
 
 const DOMINIOS_PERMITIDOS: string[] = [];
@@ -63,6 +65,8 @@ function validarTelefoneIntl(tel: string): boolean {
 
 export default function Cadastro() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [pais] = useState(() => getPais());
   const isBrasil = pais === 'BR';
 
@@ -92,51 +96,51 @@ export default function Cadastro() {
     const dominio = emailLimpo.split('@')[1] ?? '';
 
     if (!nome.trim() || !emailLimpo || !telefone || !senha || !confirmarSenha) {
-      Alert.alert('Atenção', 'Preencha todos os campos obrigatórios');
+      Alert.alert(t('common.attention'), t('cadastro.alertFillFields'));
       return;
     }
     if (isBrasil && !cpf) {
-      Alert.alert('Atenção', 'Preencha todos os campos obrigatórios');
+      Alert.alert(t('common.attention'), t('cadastro.alertFillFields'));
       return;
     }
     if (nome.trim().split(' ').length < 2) {
-      Alert.alert('Atenção', 'Digite seu nome completo (nome e sobrenome)');
+      Alert.alert(t('common.attention'), t('cadastro.alertFullName'));
       return;
     }
     if (isBrasil && !validarCPF(cpfLimpo)) {
-      Alert.alert('CPF inválido', 'Verifique o CPF digitado');
+      Alert.alert(t('cadastro.alertInvalidCPFTitle'), t('cadastro.alertInvalidCPFMsg'));
       return;
     }
     if (isBrasil && telLimpo.length < 10) {
-      Alert.alert('Telefone inválido', 'Digite um telefone com DDD');
+      Alert.alert(t('cadastro.alertInvalidPhoneTitle'), t('cadastro.alertInvalidPhoneMsg'));
       return;
     }
     if (!isBrasil && !validarTelefoneIntl(telLimpo)) {
-      Alert.alert('Telefone inválido', 'Use o formato internacional: +1 555 1234567');
+      Alert.alert(t('cadastro.alertInvalidPhoneTitle'), t('cadastro.alertInvalidPhoneIntlMsg'));
       return;
     }
     if (EMAILS_DESCARTAVEIS.includes(dominio)) {
-      Alert.alert('E-mail inválido', 'Não é permitido usar e-mails temporários.');
+      Alert.alert(t('cadastro.alertInvalidCPFTitle'), t('cadastro.alertDisposableEmailMsg'));
       return;
     }
     if (DOMINIOS_PERMITIDOS.length > 0 && !DOMINIOS_PERMITIDOS.includes(dominio)) {
-      Alert.alert('E-mail não permitido', `Domínios aceitos: ${DOMINIOS_PERMITIDOS.join(', ')}`);
+      Alert.alert(t('cadastro.alertEmailNotAllowedTitle'), t('cadastro.alertEmailNotAllowedMsg', { domains: DOMINIOS_PERMITIDOS.join(', ') }));
       return;
     }
     if (senha.length < 6) {
-      Alert.alert('Atenção', 'A senha deve ter pelo menos 6 caracteres');
+      Alert.alert(t('common.attention'), t('cadastro.alertShortPassword'));
       return;
     }
     if (senha !== confirmarSenha) {
-      Alert.alert('Atenção', 'As senhas não conferem');
+      Alert.alert(t('common.attention'), t('cadastro.alertPasswordMismatch'));
       return;
     }
     if (tipo === 'motorista' && isBrasil && !cnh.trim()) {
-      Alert.alert('Atenção', 'Digite o número da sua CNH');
+      Alert.alert(t('common.attention'), t('cadastro.alertNoCNH'));
       return;
     }
     if (tipo === 'motorista' && !declaracaoMotorista) {
-      Alert.alert('Declaração obrigatória', 'Você precisa aceitar a declaração de uso responsável.');
+      Alert.alert(t('cadastro.alertDeclarationTitle'), t('cadastro.alertDeclarationMsg'));
       return;
     }
 
@@ -148,7 +152,7 @@ export default function Cadastro() {
         const decorrido = Date.now() - parseInt(ultimaTentativa);
         if (decorrido < LIMITE_MS) {
           const horas = Math.ceil((LIMITE_MS - decorrido) / (60 * 60 * 1000));
-          Alert.alert('Limite atingido', `Aguarde ${horas}h para criar outra conta neste dispositivo.`);
+          Alert.alert(t('cadastro.alertLimitTitle'), t('cadastro.alertLimitMsg', { horas }));
           setLoading(false);
           return;
         }
@@ -163,7 +167,7 @@ export default function Cadastro() {
         const cpfSnap = await getDocs(query(collection(db, 'usuarios'), where('cpf', '==', cpfLimpo)));
         if (!cpfSnap.empty) {
           await cred.user.delete().catch(() => null);
-          Alert.alert('CPF já cadastrado', 'Este CPF já possui uma conta no eluus.');
+          Alert.alert(t('cadastro.alertCPFExistsTitle'), t('cadastro.alertCPFExistsMsg'));
           setLoading(false);
           return;
         }
@@ -184,7 +188,7 @@ export default function Cadastro() {
         creditos: 20,
         primeiraCorrida: false,
         pais,
-        phoneVerified: isBrasil,
+        phoneVerified: true,
         ...(isBrasil && { cpf: cpfLimpo }),
         ...(isBrasil && tipo === 'motorista' && { cnh: cnh.trim() }),
         criadoEm: new Date(),
@@ -192,21 +196,15 @@ export default function Cadastro() {
 
       await AsyncStorage.setItem('@eluus_ultimo_cadastro', Date.now().toString()).catch(() => null);
 
-      if (isBrasil) {
-        const destino = tipo === 'motorista' ? '/motorista' : '/passageiro';
-        console.log('[cadastro] cadastro BR concluído, navegando para', destino);
-        Alert.alert('Bem-vindo ao eluus!', 'Conta criada com sucesso!');
-        router.replace(destino);
-      } else {
-        console.log('[cadastro] cadastro internacional, navegando para verificar-telefone');
-        router.replace({ pathname: '/verificar-telefone', params: { telefone: telefone.trim() } });
-      }
+      const destino = tipo === 'motorista' ? '/motorista' : '/passageiro';
+      Alert.alert(t('cadastro.alertWelcomeTitle'), t('cadastro.alertWelcomeMsg'));
+      router.replace(destino);
     } catch (e: any) {
       console.error('[cadastro] erro:', e.code, e.message);
       if (e.code === 'auth/email-already-in-use') {
-        Alert.alert('Erro', 'Este e-mail já está cadastrado');
+        Alert.alert(t('common.error'), t('cadastro.alertEmailInUse'));
       } else {
-        Alert.alert('Erro', e.message);
+        Alert.alert(t('common.error'), e.message);
       }
     } finally {
       setLoading(false);
@@ -216,64 +214,62 @@ export default function Cadastro() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#0d0f14' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={styles.titulo}>Criar conta</Text>
-        <Text style={styles.sub}>Bem-vindo ao eluus</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backTxt}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.titulo}>{t('cadastro.title')}</Text>
+        <Text style={styles.sub}>{t('cadastro.subtitle')}</Text>
 
         <View style={styles.tipos}>
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'passageiro' && styles.tipoativo]}
             onPress={() => setTipo('passageiro')}>
             <Text style={styles.tipoicon}>🧍</Text>
-            <Text style={[styles.tipotxt, tipo === 'passageiro' && styles.tipotxtativo]}>Passageiro</Text>
+            <Text style={[styles.tipotxt, tipo === 'passageiro' && styles.tipotxtativo]}>{t('cadastro.passenger')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'motorista' && styles.tipoativoverde]}
             onPress={() => setTipo('motorista')}>
             <Text style={styles.tipoicon}>🚗</Text>
-            <Text style={[styles.tipotxt, tipo === 'motorista' && styles.tipotxtativo]}>Motorista</Text>
+            <Text style={[styles.tipotxt, tipo === 'motorista' && styles.tipotxtativo]}>{t('cadastro.driver')}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.secao}>Dados pessoais</Text>
+        <Text style={styles.secao}>{t('cadastro.personalData')}</Text>
 
-        <TextInput style={styles.input} placeholder="Nome completo" placeholderTextColor="#4a5568"
+        <TextInput style={styles.input} placeholder={t('cadastro.namePlaceholder')} placeholderTextColor="#4a5568"
           value={nome} onChangeText={setNome} autoCapitalize="words" />
 
         {isBrasil && (
-          <TextInput style={styles.input} placeholder="CPF (000.000.000-00)" placeholderTextColor="#4a5568"
+          <TextInput style={styles.input} placeholder={t('cadastro.cpfPlaceholder')} placeholderTextColor="#4a5568"
             value={cpf} onChangeText={v => setCpf(mascaraCPF(v))} keyboardType="numeric" />
         )}
 
         <TextInput
           style={styles.input}
-          placeholder={isBrasil ? 'Telefone com DDD' : '+1 555 123 4567'}
+          placeholder={isBrasil ? t('cadastro.phonePlaceholder') : t('cadastro.phoneIntlPlaceholder')}
           placeholderTextColor="#4a5568"
           value={telefone}
           onChangeText={handleTelefone}
           keyboardType="phone-pad"
         />
-        {!isBrasil && (
-          <Text style={styles.smsAviso}>
-            📱 Seu número de telefone é usado para verificar sua identidade
-          </Text>
-        )}
 
-        <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor="#4a5568"
+        <TextInput style={styles.input} placeholder={t('cadastro.emailPlaceholder')} placeholderTextColor="#4a5568"
           value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
         {tipo === 'motorista' && isBrasil && (
           <>
-            <Text style={styles.secao}>Dados do motorista</Text>
-            <TextInput style={styles.input} placeholder="Número da CNH" placeholderTextColor="#4a5568"
+            <Text style={styles.secao}>{t('cadastro.driverData')}</Text>
+            <TextInput style={styles.input} placeholder={t('cadastro.cnhPlaceholder')} placeholderTextColor="#4a5568"
               value={cnh} onChangeText={setCnh} keyboardType="numeric" maxLength={11} />
           </>
         )}
 
-        <Text style={styles.secao}>Segurança</Text>
+        <Text style={styles.secao}>{t('cadastro.security')}</Text>
 
-        <TextInput style={styles.input} placeholder="Senha (mín. 6 caracteres)" placeholderTextColor="#4a5568"
+        <TextInput style={styles.input} placeholder={t('cadastro.passwordPlaceholder')} placeholderTextColor="#4a5568"
           value={senha} onChangeText={setSenha} secureTextEntry />
-        <TextInput style={styles.input} placeholder="Confirmar senha" placeholderTextColor="#4a5568"
+        <TextInput style={styles.input} placeholder={t('cadastro.confirmPasswordPlaceholder')} placeholderTextColor="#4a5568"
           value={confirmarSenha} onChangeText={setConfirmarSenha} secureTextEntry />
 
         {tipo === 'motorista' && (
@@ -284,27 +280,24 @@ export default function Cadastro() {
             <View style={[styles.checkbox, declaracaoMotorista && styles.checkboxAtivo]}>
               {declaracaoMotorista && <Text style={styles.checkboxTick}>✓</Text>}
             </View>
-            <Text style={styles.declaracaoTxt}>
-              Declaro que só usarei o eluus para transportar pessoas que já conheço pessoalmente. Sei que usar com desconhecidos viola os termos e resulta em bloqueio permanente.
-            </Text>
+            <Text style={styles.declaracaoTxt}>{t('cadastro.driverDeclaration')}</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity style={styles.btn} onPress={cadastrar} disabled={loading}>
-          <Text style={styles.btntxt}>{loading ? 'Criando conta...' : 'Criar conta'}</Text>
+          <Text style={styles.btntxt}>{loading ? t('cadastro.registering') : t('cadastro.registerBtn')}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.replace('/')}>
-          <Text style={styles.link}>Já tenho conta — Entrar</Text>
-        </TouchableOpacity>
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 32, paddingTop: 80 },
+  container: { flex: 1, padding: 32, paddingTop: 60 },
+  backBtn: { marginBottom: 16 },
+  backTxt: { color: '#4a9eff', fontSize: 28 },
   titulo: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
   sub: { fontSize: 16, color: '#94a3b8', marginBottom: 20 },
   secao: { fontSize: 12, fontWeight: '700', color: '#4a9eff', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12, marginTop: 4 },

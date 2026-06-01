@@ -2,12 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -20,6 +20,8 @@ import {
   Vibration,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
 
 const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
@@ -31,6 +33,8 @@ type EnderecoSalvo = { placeId: string; descricao: string };
 
 export default function Passageiro() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   // — estado original —
   const [motoristas, setMotoristas] = useState<any[]>([]);
@@ -73,6 +77,17 @@ export default function Passageiro() {
   const [textoDenuncia, setTextoDenuncia] = useState('');
   const [denunciando, setDenunciando] = useState(false);
 
+  const [aguardandoResposta, setAguardandoResposta] = useState(false);
+  const [contagemRegressiva, setContagemRegressiva] = useState(60);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const [mostrarAddParadaAtiva, setMostrarAddParadaAtiva] = useState(false);
+  const [paradaAtivaInput, setParadaAtivaInput] = useState('');
+  const [paradaAtivaSugestoes, setParadaAtivaSugestoes] = useState<any[]>([]);
+  const [paradaAtivaInfo, setParadaAtivaInfo] = useState<any>(null);
+  const [adicionandoParada, setAdicionandoParada] = useState(false);
+
   const corridaAtivaRef = useRef<any>(null);
   const corridaPendenteRef = useRef<any>(null);
   const motoristaChegouRef = useRef(false);
@@ -80,6 +95,7 @@ export default function Passageiro() {
   const unsubCorridaRef = useRef<any>(null);
   const unsubChatRef = useRef<any>(null);
   const chatAbertoRef = useRef(false);
+  const chatScrollRef = useRef<any>(null);
 
   useEffect(() => {
     carregarPassageiro();
@@ -90,6 +106,7 @@ export default function Passageiro() {
       unsubMotoristasRef.current.forEach(u => u());
       if (unsubCorridaRef.current) unsubCorridaRef.current();
       if (unsubChatRef.current) unsubChatRef.current();
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
@@ -121,7 +138,7 @@ export default function Passageiro() {
     const dados: EnderecoSalvo = { placeId: destinoPlaceId, descricao: destino };
     setCasaEndereco(dados);
     await AsyncStorage.setItem(CASA_KEY, JSON.stringify(dados)).catch(() => null);
-    Alert.alert('Salvo! 🏠', 'Endereço de casa atualizado.');
+    Alert.alert(t('passageiro.savedHome'), t('passageiro.savedHomeMsg'));
   };
 
   const salvarTrabalho = async () => {
@@ -129,7 +146,7 @@ export default function Passageiro() {
     const dados: EnderecoSalvo = { placeId: destinoPlaceId, descricao: destino };
     setTrabalhoEndereco(dados);
     await AsyncStorage.setItem(TRABALHO_KEY, JSON.stringify(dados)).catch(() => null);
-    Alert.alert('Salvo! 💼', 'Endereço de trabalho atualizado.');
+    Alert.alert(t('passageiro.savedWork'), t('passageiro.savedWorkMsg'));
   };
 
   // ── localização ──────────────────────────────────────────────────────────
@@ -170,7 +187,7 @@ export default function Passageiro() {
       ));
       if (snap.empty) return;
       const corridaDoc = snap.docs[0];
-      const corridaData = { id: corridaDoc.id, ...corridaDoc.data() };
+      const corridaData: any = { id: corridaDoc.id, ...corridaDoc.data() };
       const motoristaNome = corridaData.motoristaNome || '';
 
       if (corridaData.status === 'aceita') {
@@ -193,23 +210,26 @@ export default function Passageiro() {
         const data = docSnap.data();
         if (!data) return;
         if (data.status === 'aceita' && !corridaAtivaRef.current) {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
           const cd = { id: corridaDoc.id, ...data };
           corridaAtivaRef.current = cd;
           setCorridaAtiva(cd);
           escutarChat(corridaDoc.id);
-          Alert.alert('Corrida aceita! 🎉', `${motoristaNome} aceitou! Ele está a caminho.`);
+          Alert.alert(t('passageiro.rideAccepted'), t('passageiro.rideAcceptedMsg', { name: motoristaNome }));
         }
         if (data.status === 'recusada') {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
           if (unsubCorridaRef.current) unsubCorridaRef.current();
         }
         if (data.status === 'cancelada') {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
-          Alert.alert('Corrida cancelada', data.canceladoPor === 'motorista' ? `${motoristaNome} cancelou a corrida.` : 'Corrida cancelada.');
+          Alert.alert(t('passageiro.rideCancelled'), data.canceladoPor === 'motorista' ? t('passageiro.rideCancelledByDriver', { name: motoristaNome }) : t('passageiro.rideCancelledGeneric'));
           corridaAtivaRef.current = null;
           setCorridaAtiva(null);
           setMotoristaChegou(false);
@@ -218,7 +238,7 @@ export default function Passageiro() {
           if (unsubChatRef.current) unsubChatRef.current();
         }
         if (data.status === 'finalizada') {
-          const corridaInfo = { id: corridaDoc.id, motoristaId: data.motoristaId, motoristaNome: data.motoristaNome };
+          const corridaInfo = { id: corridaDoc.id, motoristaId: data.motoristaId, motoristaNome: data.motoristaNome, valor: data.valor };
           corridaAtivaRef.current = null;
           setCorridaAtiva(null);
           setMotoristaChegou(false);
@@ -237,7 +257,7 @@ export default function Passageiro() {
           motoristaChegouRef.current = true;
           setMotoristaChegou(true);
           Vibration.vibrate([0, 500, 200, 500]);
-          Alert.alert('🚗 Motorista chegou!', `${motoristaNome} está no local de embarque!`);
+          Alert.alert(t('passageiro.driverArrivedTitle'), t('passageiro.driverArrivedMsg', { name: motoristaNome }));
         }
       });
     } catch (e) {}
@@ -251,13 +271,19 @@ export default function Passageiro() {
       const unsub = onSnapshot(doc(db, 'usuarios', motId), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          // Motoristas não verificados por SMS (não-BR) não aparecem online
-          const isVerificado = data.pais === 'BR' || !data.pais || data.phoneVerified === true;
-          motoMap[motId] = { id: motId, ...data, online: isVerificado ? data.online : false };
+          motoMap[motId] = { id: motId, ...data };
           setMotoristas(Object.values(motoMap));
         }
       });
       unsubMotoristasRef.current.push(unsub);
+    });
+  };
+
+  const marcarLidasPassageiro = (msgs: any[], corridaId: string) => {
+    msgs.forEach(m => {
+      if (m.remetente === 'motorista' && m.lida !== true) {
+        updateDoc(doc(db, 'corridas', corridaId, 'mensagens', m.id), { lida: true }).catch(() => null);
+      }
     });
   };
 
@@ -266,8 +292,11 @@ export default function Passageiro() {
     const q = query(collection(db, 'corridas', corridaId, 'mensagens'), orderBy('criadoEm', 'asc'));
     let primeiraLeitura = true;
     unsubChatRef.current = onSnapshot(q, (snap) => {
-      const novas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const novas: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMensagens(novas);
+      if (chatAbertoRef.current) {
+        marcarLidasPassageiro(novas, corridaId);
+      }
       if (!primeiraLeitura) {
         const ultima = novas[novas.length - 1];
         if (ultima?.remetente === 'motorista' && !chatAbertoRef.current) {
@@ -289,10 +318,15 @@ export default function Passageiro() {
         criadoEm: new Date(),
       });
       setNovaMensagem('');
-    } catch (e) { Alert.alert('Erro', 'Não foi possível enviar a mensagem'); }
+    } catch (e) { Alert.alert(t('common.error'), 'Não foi possível enviar a mensagem'); }
   };
 
-  const abrirChat = () => { chatAbertoRef.current = true; setMsgNaoLidas(0); setMostrarChat(true); };
+  const abrirChat = () => {
+    chatAbertoRef.current = true;
+    setMsgNaoLidas(0);
+    setMostrarChat(true);
+    if (corridaAtivaRef.current) marcarLidasPassageiro(mensagens, corridaAtivaRef.current.id);
+  };
   const fecharChat = () => { chatAbertoRef.current = false; setMostrarChat(false); };
 
   // ── busca de endereço ────────────────────────────────────────────────────
@@ -303,8 +337,9 @@ export default function Passageiro() {
     if (paradaInfo) { setParadaInfo(null); setParada(''); setMostrarParada(false); }
     if (texto.length < 3) { setSugestoes([]); return; }
     try {
+      const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
       const res = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR&components=country:br&key=${GOOGLE_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
       );
       if (res.data.status === 'OK') setSugestoes(res.data.predictions || []);
     } catch (e) {}
@@ -314,8 +349,9 @@ export default function Passageiro() {
     setParada(texto);
     if (texto.length < 3) { setParadaSugestoes([]); return; }
     try {
+      const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
       const res = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR&components=country:br&key=${GOOGLE_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
       );
       if (res.data.status === 'OK') setParadaSugestoes(res.data.predictions || []);
     } catch (e) {}
@@ -420,9 +456,9 @@ export default function Passageiro() {
           };
         }
       }
-      if (Object.keys(novosValores).length === 0) Alert.alert('Atenção', 'Nenhum motorista disponível com localização salva.');
+      if (Object.keys(novosValores).length === 0) Alert.alert(t('common.attention'), t('passageiro.noLocationAvailable'));
       setValores(novosValores);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível calcular as rotas'); }
+    } catch (e) { Alert.alert(t('common.error'), 'Não foi possível calcular as rotas'); }
     setCalculando(false);
   };
 
@@ -431,11 +467,11 @@ export default function Passageiro() {
   const solicitarCorrida = async (motorista: any, confirmarOffline = false) => {
     if (!motorista.online && !confirmarOffline) {
       Alert.alert(
-        'Motorista offline',
-        'Este motorista está offline. Sua solicitação será enviada e ele será notificado quando ficar online. Deseja continuar?',
+        t('passageiro.driverOffline'),
+        t('passageiro.driverOfflineMsg'),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Enviar mesmo assim', onPress: () => solicitarCorrida(motorista, true) },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('passageiro.driverOfflineSend'), onPress: () => solicitarCorrida(motorista, true) },
         ]
       );
       return;
@@ -498,12 +534,11 @@ export default function Passageiro() {
         }).catch(() => null);
       }
 
+      const pd = { id: corridaRef.id, motoristaNome: motorista.nome, destino, valor: val.preco, status: 'pendente' };
+      corridaPendenteRef.current = pd;
+      setCorridaPendente(pd);
       if (motorista.online) {
-        Alert.alert('Solicitação enviada! 🚗', `Aguardando ${motorista.nome} aceitar...`);
-      } else {
-        const pd = { id: corridaRef.id, motoristaNome: motorista.nome, destino, valor: val.preco, status: 'pendente' };
-        corridaPendenteRef.current = pd;
-        setCorridaPendente(pd);
+        iniciarContagemRegressiva();
       }
 
       if (unsubCorridaRef.current) unsubCorridaRef.current();
@@ -512,24 +547,27 @@ export default function Passageiro() {
         if (!data) return;
 
         if (data.status === 'aceita') {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
           const corridaData = { id: corridaRef.id, ...data };
           corridaAtivaRef.current = corridaData;
           setCorridaAtiva(corridaData);
           escutarChat(corridaRef.id);
-          Alert.alert('Corrida aceita! 🎉', `${motorista.nome} aceitou! Ele está a caminho.`);
+          Alert.alert(t('passageiro.rideAccepted'), t('passageiro.rideAcceptedMsg', { name: motorista.nome }));
         }
         if (data.status === 'recusada') {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
-          Alert.alert('Corrida recusada', `${motorista.nome} não pode atender agora.`);
+          Alert.alert(t('passageiro.rideRefused'), t('passageiro.rideRefusedMsg', { name: motorista.nome }));
           if (unsubCorridaRef.current) unsubCorridaRef.current();
         }
         if (data.status === 'cancelada') {
+          cancelarContagemRegressiva();
           corridaPendenteRef.current = null;
           setCorridaPendente(null);
-          Alert.alert('Corrida cancelada', data.canceladoPor === 'motorista' ? `${motorista.nome} cancelou a corrida.` : 'Corrida cancelada.');
+          Alert.alert(t('passageiro.rideCancelled'), data.canceladoPor === 'motorista' ? t('passageiro.rideCancelledByDriver', { name: motorista.nome }) : t('passageiro.rideCancelledGeneric'));
           corridaAtivaRef.current = null;
           setCorridaAtiva(null);
           setMotoristaChegou(false);
@@ -538,7 +576,7 @@ export default function Passageiro() {
           if (unsubChatRef.current) unsubChatRef.current();
         }
         if (data.status === 'finalizada') {
-          const corridaInfo = { id: corridaRef.id, motoristaId: data.motoristaId, motoristaNome: data.motoristaNome };
+          const corridaInfo = { id: corridaRef.id, motoristaId: data.motoristaId, motoristaNome: data.motoristaNome, valor: data.valor };
           corridaAtivaRef.current = null;
           setCorridaAtiva(null);
           setMotoristaChegou(false);
@@ -557,10 +595,10 @@ export default function Passageiro() {
           motoristaChegouRef.current = true;
           setMotoristaChegou(true);
           Vibration.vibrate([0, 500, 200, 500]);
-          Alert.alert('🚗 Motorista chegou!', `${motorista.nome} está no local de embarque!`);
+          Alert.alert(t('passageiro.driverArrivedTitle'), t('passageiro.driverArrivedMsg', { name: motorista.nome }));
         }
       });
-    } catch (e) { Alert.alert('Erro', 'Não foi possível solicitar a corrida'); }
+    } catch (e) { Alert.alert(t('common.error'), 'Não foi possível solicitar a corrida'); }
   };
 
   const verificarIndicacao = async (passageiroId: string) => {
@@ -615,13 +653,13 @@ export default function Passageiro() {
   };
 
   const getAvaliacaoLabel = (n: number) => {
-    const labels = ['', 'Muito ruim', 'Ruim', 'Regular', 'Bom', 'Excelente!'];
+    const labels = ['', t('common.rating1'), t('common.rating2'), t('common.rating3'), t('common.rating4'), t('common.rating5')];
     return labels[n] || '';
   };
 
   const enviarDenuncia = async () => {
-    if (!categoriaDenuncia) { Alert.alert('Atenção', 'Selecione uma categoria'); return; }
-    if (!textoDenuncia.trim()) { Alert.alert('Atenção', 'Descreva o ocorrido'); return; }
+    if (!categoriaDenuncia) { Alert.alert(t('common.attention'), t('motorista.errSelectCategory')); return; }
+    if (!textoDenuncia.trim()) { Alert.alert(t('common.attention'), t('motorista.errDescribe')); return; }
     setDenunciando(true);
     try {
       await addDoc(collection(db, 'denuncias'), {
@@ -634,22 +672,23 @@ export default function Passageiro() {
         descricao: textoDenuncia.trim(),
         criadoEm: new Date(),
       });
-      Alert.alert('Denúncia enviada', 'Obrigado. Nossa equipe irá analisar.');
+      Alert.alert(t('motorista.reportSent'), t('motorista.reportSentMsg'));
       setMostrarDenuncia(false);
       setCategoriaDenuncia('');
       setTextoDenuncia('');
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível enviar a denúncia');
+      Alert.alert(t('common.error'), t('motorista.errSendReport'));
     }
     setDenunciando(false);
   };
 
   const cancelarCorridaPendente = async () => {
     if (!corridaPendenteRef.current) return;
-    Alert.alert('Cancelar solicitação?', 'A solicitação será cancelada.', [
-      { text: 'Não', style: 'cancel' },
+    Alert.alert(t('passageiro.cancelRequestTitle'), t('passageiro.cancelRequestMsg'), [
+      { text: t('common.no'), style: 'cancel' },
       {
-        text: 'Sim, cancelar', style: 'destructive', onPress: async () => {
+        text: t('passageiro.confirmCancel'), style: 'destructive', onPress: async () => {
+          cancelarContagemRegressiva();
           await updateDoc(doc(db, 'corridas', corridaPendenteRef.current.id), {
             status: 'cancelada', canceladoPor: 'passageiro', canceladoEm: new Date(),
           });
@@ -663,10 +702,10 @@ export default function Passageiro() {
 
   const cancelarCorrida = async () => {
     if (!corridaAtivaRef.current) return;
-    Alert.alert('Cancelar corrida?', 'O motorista será notificado.', [
-      { text: 'Não', style: 'cancel' },
+    Alert.alert(t('passageiro.cancelRideTitle'), t('passageiro.cancelRideMsg'), [
+      { text: t('common.no'), style: 'cancel' },
       {
-        text: 'Sim, cancelar', style: 'destructive', onPress: async () => {
+        text: t('passageiro.confirmCancel'), style: 'destructive', onPress: async () => {
           await updateDoc(doc(db, 'corridas', corridaAtivaRef.current.id), {
             status: 'cancelada', canceladoPor: 'passageiro', canceladoEm: new Date(),
           });
@@ -682,29 +721,146 @@ export default function Passageiro() {
   };
 
   const adicionarMotorista = async () => {
-    if (!codigoMotorista || codigoMotorista.length < 6) { Alert.alert('Atenção', 'Digite o código completo'); return; }
+    if (!codigoMotorista || codigoMotorista.length < 6) { Alert.alert(t('common.attention'), 'Digite o código completo'); return; }
     setAdicionando(true);
     try {
       const uid = auth.currentUser?.uid;
       const q = query(collection(db, 'usuarios'), where('codigo', '==', codigoMotorista.toUpperCase()), where('tipo', '==', 'motorista'));
       const snap = await getDocs(q);
-      if (snap.empty) { Alert.alert('Não encontrado', 'Nenhum motorista com esse código'); setAdicionando(false); return; }
+      if (snap.empty) { Alert.alert('Não encontrado', t('passageiro.noDriversFound')); setAdicionando(false); return; }
       const motoristaDoc = snap.docs[0];
-      if (motoristasIds.includes(motoristaDoc.id)) { Alert.alert('Atenção', 'Este motorista já está na sua lista'); setAdicionando(false); return; }
+      if (motoristasIds.includes(motoristaDoc.id)) { Alert.alert(t('common.attention'), t('passageiro.driverAlreadyAdded')); setAdicionando(false); return; }
       const novosIds = [...motoristasIds, motoristaDoc.id];
       await updateDoc(doc(db, 'usuarios', uid!), { motoristas: novosIds });
-      Alert.alert('Sucesso', `${motoristaDoc.data().nome} adicionado!`);
+      Alert.alert(t('common.success'), `${motoristaDoc.data().nome} ${t('passageiro.driverAdded')}`);
       setCodigoMotorista('');
       setMostrarAdd(false);
       setMotoristasIds(novosIds);
       escutarMotoristas(novosIds);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível adicionar motorista'); }
+    } catch (e) { Alert.alert(t('common.error'), 'Não foi possível adicionar motorista'); }
     setAdicionando(false);
   };
 
-  const sair = async () => {
-    await signOut(auth);
-    router.replace('/');
+
+  const iniciarContagemRegressiva = () => {
+    setContagemRegressiva(60);
+    setAguardandoResposta(true);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.25, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+    let segundos = 60;
+    timerRef.current = setInterval(() => {
+      segundos -= 1;
+      setContagemRegressiva(segundos);
+      if (segundos <= 0) {
+        cancelarContagemRegressiva(true);
+      }
+    }, 1000);
+  };
+
+  const cancelarContagemRegressiva = (timeout = false) => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    pulseAnim.stopAnimation();
+    Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    setAguardandoResposta(false);
+    setContagemRegressiva(60);
+    if (timeout) {
+      if (corridaPendenteRef.current) {
+        updateDoc(doc(db, 'corridas', corridaPendenteRef.current.id), {
+          status: 'cancelada', canceladoPor: 'passageiro_timeout', canceladoEm: new Date(),
+        }).catch(() => null);
+        corridaPendenteRef.current = null;
+        setCorridaPendente(null);
+        if (unsubCorridaRef.current) unsubCorridaRef.current();
+      }
+      Alert.alert(t('passageiro.noResponseTitle'), t('passageiro.noResponseMsg'));
+    }
+  };
+
+  const buscarSugestoesParadaAtiva = async (texto: string) => {
+    setParadaAtivaInput(texto);
+    if (texto.length < 3) { setParadaAtivaSugestoes([]); return; }
+    try {
+      const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
+      const res = await axios.get(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
+      );
+      if (res.data.status === 'OK') setParadaAtivaSugestoes(res.data.predictions || []);
+    } catch (e) {}
+  };
+
+  const selecionarParadaAtiva = async (placeId: string, descricao: string) => {
+    setParadaAtivaInput(descricao);
+    setParadaAtivaSugestoes([]);
+    try {
+      const detRes = await axios.get(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${GOOGLE_KEY}`
+      );
+      if (detRes.data.status === 'OK') {
+        const loc = detRes.data.result.geometry.location;
+        setParadaAtivaInfo({ descricao, placeId, lat: loc.lat, lng: loc.lng });
+      }
+    } catch (e) {}
+  };
+
+  const confirmarParadaAtiva = async () => {
+    if (!paradaAtivaInfo || !corridaAtivaRef.current) return;
+    setAdicionandoParada(true);
+    try {
+      const corrida = corridaAtivaRef.current;
+      let novoValor = corrida.valor;
+      try {
+        const motoristaSnap = await getDoc(doc(db, 'usuarios', corrida.motoristaId));
+        const mData = motoristaSnap.data();
+        const waypointParam = `&waypoints=${paradaAtivaInfo.lat},${paradaAtivaInfo.lng}`;
+        const rota = await axios.get(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${corrida.passageiroLat},${corrida.passageiroLng}&destination=${corrida.destLat},${corrida.destLng}${waypointParam}&language=pt-BR&key=${GOOGLE_KEY}`
+        );
+        if (rota.data.status === 'OK') {
+          const legs = rota.data.routes[0].legs;
+          const distTotal = legs.reduce((s: number, l: any) => s + l.distance.value, 0) / 1000;
+          const preco = distTotal * (mData?.precoPorKm || 2.5);
+          novoValor = preco.toFixed(2);
+        }
+      } catch (_) {}
+
+      await updateDoc(doc(db, 'corridas', corrida.id), {
+        paradaDescricao: paradaAtivaInfo.descricao,
+        paradaLat: paradaAtivaInfo.lat,
+        paradaLng: paradaAtivaInfo.lng,
+        valor: novoValor,
+        paradaAtualizadaEm: new Date(),
+      });
+
+      const motoristaSnap = await getDoc(doc(db, 'usuarios', corrida.motoristaId));
+      const mData = motoristaSnap.data();
+      if (mData?.expoPushToken) {
+        fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: mData.expoPushToken,
+            title: '🔶 Nova parada adicionada',
+            body: `${paradaAtivaInfo.descricao} · Novo valor: R$ ${novoValor}`,
+            data: { corridaId: corrida.id },
+            channelId: 'corridas',
+            priority: 'high',
+            sound: 'default',
+          }),
+        }).catch(() => null);
+      }
+
+      setMostrarAddParadaAtiva(false);
+      setParadaAtivaInput('');
+      setParadaAtivaInfo(null);
+      Alert.alert(t('passageiro.stopAdded'), t('passageiro.stopAddedMsg'));
+    } catch (e) {
+      Alert.alert(t('common.error'), 'Não foi possível adicionar a parada.');
+    }
+    setAdicionandoParada(false);
   };
 
   const onlineCount = motoristas.filter((m: any) => m.online).length;
@@ -730,12 +886,12 @@ export default function Passageiro() {
         <View style={styles.avisoOverlay}>
           <View style={styles.avisoCard}>
             <Text style={styles.avisoEmoji}>🤝</Text>
-            <Text style={styles.avisoTitulo}>Lembrete importante</Text>
+            <Text style={styles.avisoTitulo}>{t('passageiro.reminderTitle')}</Text>
             <Text style={styles.avisoTexto}>
-              O eluus é só para motoristas que você já conhece. Nunca peça corrida para um desconhecido.
+              {t('passageiro.reminderText')}
             </Text>
             <TouchableOpacity style={styles.avisoBtn} onPress={() => setMostrarAvisoInicial(false)}>
-              <Text style={styles.avisoBtnTxt}>Entendi</Text>
+              <Text style={styles.avisoBtnTxt}>{t('passageiro.understood')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -760,42 +916,42 @@ export default function Passageiro() {
               <View style={styles.perfilAvalRow}>
                 <Text style={styles.perfilEstrela}>★</Text>
                 <Text style={styles.perfilAvalTxt}>
-                  {motoristaPerfilModal.avaliacaoMedia.toFixed(1)} ({motoristaPerfilModal.totalAvaliacoes || 0} avaliações)
+                  {motoristaPerfilModal.avaliacaoMedia.toFixed(1)} ({t('passageiro.reviewsCount', { count: motoristaPerfilModal.totalAvaliacoes || 0 })})
                 </Text>
               </View>
             ) : (
-              <Text style={styles.perfilSemAval}>Sem avaliações ainda</Text>
+              <Text style={styles.perfilSemAval}>{t('passageiro.noReviews')}</Text>
             )}
             <View style={styles.perfilDivisor} />
             <View style={styles.perfilInfoGrid}>
               {motoristaPerfilModal?.veiculo ? (
                 <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>Veículo</Text>
+                  <Text style={styles.perfilInfoLabel}>{t('passageiro.vehicle')}</Text>
                   <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.veiculo}</Text>
                 </View>
               ) : null}
               {motoristaPerfilModal?.cor ? (
                 <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>Cor</Text>
+                  <Text style={styles.perfilInfoLabel}>{t('passageiro.color')}</Text>
                   <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.cor}</Text>
                 </View>
               ) : null}
               {motoristaPerfilModal?.placa ? (
                 <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>Placa</Text>
+                  <Text style={styles.perfilInfoLabel}>{t('passageiro.plate')}</Text>
                   <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.placa}</Text>
                 </View>
               ) : null}
               {motoristaPerfilModal?.precoPorKm ? (
                 <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>Preço/km</Text>
+                  <Text style={styles.perfilInfoLabel}>{t('passageiro.pricePerKmLabel')}</Text>
                   <Text style={styles.perfilInfoValor}>R$ {motoristaPerfilModal.precoPorKm.toFixed(2)}</Text>
                 </View>
               ) : null}
             </View>
             {motoristaPerfilModal?.telefone ? (
               <View style={styles.perfilTelBox}>
-                <Text style={styles.perfilTelLabel}>📞 Telefone</Text>
+                <Text style={styles.perfilTelLabel}>{t('passageiro.phoneLabel')}</Text>
                 <Text style={styles.perfilTelValor}>{motoristaPerfilModal.telefone}</Text>
               </View>
             ) : null}
@@ -805,21 +961,26 @@ export default function Passageiro() {
 
       {/* Modal denúncia */}
       <Modal visible={mostrarDenuncia} transparent animationType="slide" onRequestClose={() => setMostrarDenuncia(false)}>
-        <View style={styles.denunciaOverlay}>
+        <KeyboardAvoidingView style={styles.denunciaOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.denunciaCard}>
-            <Text style={styles.denunciaTitulo}>🚨 Fazer Denúncia</Text>
-            <Text style={styles.denunciaLabel}>Categoria</Text>
+            <Text style={styles.denunciaTitulo}>🚨 {t('motorista.reportTitle')}</Text>
+            <Text style={styles.denunciaLabel}>{t('motorista.reportCategory')}</Text>
             <View style={styles.categoriasRow}>
-              {['Comportamento', 'Segurança', 'Fraude', 'Outro'].map(c => (
-                <TouchableOpacity key={c} style={[styles.categoriaBtn, categoriaDenuncia === c && styles.categoriaBtnAtivo]} onPress={() => setCategoriaDenuncia(c)}>
-                  <Text style={[styles.categoriaTxt, categoriaDenuncia === c && styles.categoriaTxtAtivo]}>{c}</Text>
+              {[
+                { v: 'Comportamento', l: t('motorista.catBehavior') },
+                { v: 'Segurança', l: t('motorista.catSecurity') },
+                { v: 'Fraude', l: t('motorista.catFraud') },
+                { v: 'Outro', l: t('motorista.catOther') },
+              ].map(c => (
+                <TouchableOpacity key={c.v} style={[styles.categoriaBtn, categoriaDenuncia === c.v && styles.categoriaBtnAtivo]} onPress={() => setCategoriaDenuncia(c.v)}>
+                  <Text style={[styles.categoriaTxt, categoriaDenuncia === c.v && styles.categoriaTxtAtivo]}>{c.l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.denunciaLabel}>Descreva o ocorrido</Text>
+            <Text style={styles.denunciaLabel}>{t('motorista.reportDescribe')}</Text>
             <TextInput
               style={styles.denunciaInput}
-              placeholder="O que aconteceu?"
+              placeholder={t('motorista.reportWhatHappened')}
               placeholderTextColor="#4a5568"
               value={textoDenuncia}
               onChangeText={setTextoDenuncia}
@@ -828,22 +989,28 @@ export default function Passageiro() {
               textAlignVertical="top"
             />
             <TouchableOpacity style={styles.denunciaEnviarBtn} onPress={enviarDenuncia} disabled={denunciando}>
-              <Text style={styles.denunciaEnviarTxt}>{denunciando ? 'Enviando...' : 'Enviar denúncia'}</Text>
+              <Text style={styles.denunciaEnviarTxt}>{denunciando ? t('motorista.reportSending') : t('motorista.reportSendBtn')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setMostrarDenuncia(false); setCategoriaDenuncia(''); setTextoDenuncia(''); }}>
-              <Text style={styles.denunciaCancelarTxt}>Cancelar</Text>
+              <Text style={styles.denunciaCancelarTxt}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal avaliação */}
       <Modal visible={mostrarModalAvaliacao} transparent animationType="slide">
-        <View style={styles.avaliacaoOverlay}>
-          <View style={styles.avaliacaoCard}>
+        <KeyboardAvoidingView style={styles.avaliacaoOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView contentContainerStyle={styles.avaliacaoCard} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.avaliacaoEmoji}>⭐</Text>
-            <Text style={styles.avaliacaoTitulo}>Como foi a corrida?</Text>
-            <Text style={styles.avaliacaoSub}>Avalie {corridaParaAvaliar?.motoristaNome}</Text>
+            {corridaParaAvaliar?.valor && (
+              <View style={styles.corridaValorFinalBox}>
+                <Text style={styles.corridaValorFinalTxt}>{t('passageiro.rideValue')}</Text>
+                <Text style={styles.corridaValorFinalNum}>R$ {corridaParaAvaliar.valor}</Text>
+              </View>
+            )}
+            <Text style={styles.avaliacaoTitulo}>{t('passageiro.rateRide')}</Text>
+            <Text style={styles.avaliacaoSub}>{t('passageiro.rateDriver')} {corridaParaAvaliar?.motoristaNome}</Text>
             <View style={styles.estrelasRow}>
               {[1, 2, 3, 4, 5].map(i => (
                 <TouchableOpacity key={i} onPress={() => setEstrelasAvaliacao(i)}>
@@ -854,7 +1021,7 @@ export default function Passageiro() {
             <Text style={styles.avaliacaoNota}>{getAvaliacaoLabel(estrelasAvaliacao)}</Text>
             <TextInput
               style={styles.avaliacaoInput}
-              placeholder="Comentário (opcional)..."
+              placeholder={t('passageiro.commentPlaceholder')}
               placeholderTextColor="#4a5568"
               value={comentarioAvaliacao}
               onChangeText={setComentarioAvaliacao}
@@ -862,13 +1029,13 @@ export default function Passageiro() {
               numberOfLines={3}
             />
             <TouchableOpacity style={styles.avaliacaoBtn} onPress={() => salvarAvaliacaoMotorista(false)}>
-              <Text style={styles.avaliacaoBtnTxt}>Enviar avaliação</Text>
+              <Text style={styles.avaliacaoBtnTxt}>{t('passageiro.sendRating')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => salvarAvaliacaoMotorista(true)}>
-              <Text style={styles.avaliacaoPularTxt}>Pular</Text>
+              <Text style={styles.avaliacaoPularTxt}>{t('common.skip')}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal chat */}
@@ -881,20 +1048,68 @@ export default function Passageiro() {
                 <Text style={styles.chatFechar}>✕</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.chatMensagens} showsVerticalScrollIndicator={false}>
-              {mensagens.length === 0 && <Text style={styles.chatVazio}>Nenhuma mensagem ainda</Text>}
+            <ScrollView
+              ref={chatScrollRef}
+              style={styles.chatMensagens}
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}>
+              {mensagens.length === 0 && <Text style={styles.chatVazio}>{t('historico.noMessages')}</Text>}
               {mensagens.map((m: any) => (
                 <View key={m.id} style={[styles.msgBubble, m.remetente === 'passageiro' ? styles.msgMinha : styles.msgDele]}>
                   <Text style={styles.msgTxt}>{m.texto}</Text>
+                  {m.remetente === 'passageiro' && (
+                    <Text style={styles.msgRecibo}>{m.lida ? '✓✓' : '✓'}</Text>
+                  )}
                 </View>
               ))}
             </ScrollView>
             <View style={styles.chatInput}>
-              <TextInput style={styles.chatTextInput} placeholder="Digite uma mensagem..." placeholderTextColor="#4a5568" value={novaMensagem} onChangeText={setNovaMensagem} />
+              <TextInput style={styles.chatTextInput} placeholder={t('historico.messagePlaceholder')} placeholderTextColor="#4a5568" value={novaMensagem} onChangeText={setNovaMensagem} />
               <TouchableOpacity style={styles.chatEnviar} onPress={enviarMensagem}>
                 <Text style={styles.chatEnviarTxt}>➤</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal adicionar parada durante corrida */}
+      <Modal visible={mostrarAddParadaAtiva} transparent animationType="slide" onRequestClose={() => setMostrarAddParadaAtiva(false)}>
+        <KeyboardAvoidingView style={styles.paradaAtivaOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.paradaAtivaCard}>
+            <View style={styles.paradaAtivaHeader}>
+              <Text style={styles.paradaAtivaTitulo}>{t('passageiro.stopTitle')}</Text>
+              <TouchableOpacity onPress={() => { setMostrarAddParadaAtiva(false); setParadaAtivaInput(''); setParadaAtivaSugestoes([]); setParadaAtivaInfo(null); }}>
+                <Text style={styles.paradaAtivaFechar}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.paradaAtivaInput}
+              placeholder={t('passageiro.stopPlaceholder')}
+              placeholderTextColor="#4a5568"
+              value={paradaAtivaInput}
+              onChangeText={buscarSugestoesParadaAtiva}
+              autoFocus
+            />
+            {paradaAtivaSugestoes.length > 0 && (
+              <View style={styles.sugestoesBox}>
+                {paradaAtivaSugestoes.map((s: any) => (
+                  <TouchableOpacity key={s.place_id} style={styles.sugestaoItem} onPress={() => selecionarParadaAtiva(s.place_id, s.description)}>
+                    <Text style={styles.historicoIcon}>📍</Text>
+                    <Text style={styles.sugestaoTxt}>{s.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            {paradaAtivaInfo && (
+              <View style={styles.paradaAtivaConfirmBox}>
+                <Text style={styles.paradaAtivaConfirmTxt}>📍 {paradaAtivaInfo.descricao}</Text>
+                <Text style={styles.paradaAtivaAviso}>{t('passageiro.stopRecalc')}</Text>
+                <TouchableOpacity style={styles.paradaAtivaConfirmBtn} onPress={confirmarParadaAtiva} disabled={adicionandoParada}>
+                  <Text style={styles.paradaAtivaConfirmBtnTxt}>{adicionandoParada ? t('passageiro.addingStop') : t('passageiro.confirmStop')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -905,7 +1120,7 @@ export default function Passageiro() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>eluus</Text>
-            <Text style={styles.bemvindo}>Olá, {primeiroNome} 👋</Text>
+            <Text style={styles.bemvindo}>{t('passageiro.hello')}, {primeiroNome} 👋</Text>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity onPress={() => router.push('/historico')} style={styles.headerBtn}>
@@ -914,16 +1129,13 @@ export default function Passageiro() {
             <TouchableOpacity onPress={() => router.push('/perfil')} style={styles.headerBtn}>
               <Text style={styles.headerBtnTxt}>👤</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={sair} style={styles.headerBtn}>
-              <Text style={styles.headerBtnTxt}>Sair</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* Status */}
         <View style={styles.statusBox}>
           <View style={[styles.bolinha, { backgroundColor: onlineCount > 0 ? '#22c55e' : '#4a5568' }]} />
-          <Text style={styles.statusTxt}>{onlineCount} motorista{onlineCount !== 1 ? 's' : ''} online agora</Text>
+          <Text style={styles.statusTxt}>{t('passageiro.driversOnline', { count: onlineCount, plural: onlineCount !== 1 ? 's' : '' })}</Text>
         </View>
 
         {/* Corrida ativa */}
@@ -933,12 +1145,16 @@ export default function Passageiro() {
               <Text style={styles.corridaAtivaEmoji}>{motoristaChegou ? '🚗' : '⏳'}</Text>
               <View style={styles.corridaAtivaInfo}>
                 <Text style={[styles.corridaAtivaTitulo, motoristaChegou && styles.corridaChegouTitulo]}>
-                  {motoristaChegou ? '🚗 Motorista chegou!' : 'Corrida em andamento'}
+                  {motoristaChegou ? t('passageiro.driverArrivedTitle') : t('passageiro.rideInProgress')}
                 </Text>
-                <Text style={styles.corridaAtivaMotorista}>{corridaAtiva.motoristaNome} está a caminho</Text>
+                <Text style={styles.corridaAtivaMotorista}>
+                  {motoristaChegou
+                    ? t('passageiro.driverAtPickup', { name: corridaAtiva.motoristaNome })
+                    : t('passageiro.driverOnWay', { name: corridaAtiva.motoristaNome })}
+                </Text>
                 <Text style={styles.corridaAtivaDestino}>📍 {corridaAtiva.destino}</Text>
                 {corridaAtiva.paradaDescricao ? (
-                  <Text style={styles.corridaAtivaDestino}>🔶 Parada: {corridaAtiva.paradaDescricao}</Text>
+                  <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAtiva.paradaDescricao}</Text>
                 ) : null}
                 <Text style={styles.corridaAtivaValor}>💰 R$ {corridaAtiva.valor} · {corridaAtiva.distancia} km total</Text>
               </View>
@@ -948,50 +1164,80 @@ export default function Passageiro() {
                 <Text style={styles.corridaBtnTxt}>💬 Chat{msgNaoLidas > 0 ? ` (${msgNaoLidas})` : ''}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.corridaBtnCancelar} onPress={cancelarCorrida}>
-                <Text style={styles.corridaBtnCancelarTxt}>✕ Cancelar</Text>
+                <Text style={styles.corridaBtnCancelarTxt}>{t('motorista.cancelRide')}</Text>
               </TouchableOpacity>
             </View>
+            {!corridaAtiva.paradaDescricao && (
+              <TouchableOpacity style={styles.addParadaAtivaBtn} onPress={() => setMostrarAddParadaAtiva(true)}>
+                <Text style={styles.addParadaAtivaTxt}>{t('passageiro.addStopRide')}</Text>
+              </TouchableOpacity>
+            )}
+            {corridaAtiva.paradaDescricao && (
+              <TouchableOpacity style={styles.addParadaAtivaBtn} onPress={() => {
+                Alert.alert(t('passageiro.removeStopTitle'), t('passageiro.removeStopConfirmMsg'), [
+                  { text: t('common.no'), style: 'cancel' },
+                  { text: t('passageiro.removeStopConfirmBtn'), style: 'destructive', onPress: async () => {
+                    await updateDoc(doc(db, 'corridas', corridaAtiva.id), {
+                      paradaDescricao: null, paradaLat: null, paradaLng: null,
+                    }).catch(() => null);
+                  }},
+                ]);
+              }}>
+                <Text style={[styles.addParadaAtivaTxt, { color: '#ef4444' }]}>{t('passageiro.removeStop')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={() => setMostrarDenuncia(true)} style={styles.denunciarBtn}>
-              <Text style={styles.denunciarBtnTxt}>🚨 Denunciar motorista</Text>
+              <Text style={styles.denunciarBtnTxt}>{t('passageiro.reportDriver')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Aguardando motorista offline */}
+        {/* Aguardando motorista */}
         {corridaPendente && !corridaAtiva && (
-          <View style={styles.aguardandoCard}>
+          <View style={[styles.aguardandoCard, aguardandoResposta && styles.aguardandoCardAtivo]}>
             <View style={styles.aguardandoTop}>
-              <Text style={styles.aguardandoEmoji}>⏳</Text>
+              {aguardandoResposta ? (
+                <Animated.View style={[styles.pulseContainer, { transform: [{ scale: pulseAnim }] }]}>
+                  <Text style={styles.aguardandoEmoji}>🔔</Text>
+                </Animated.View>
+              ) : (
+                <Text style={styles.aguardandoEmoji}>⏳</Text>
+              )}
               <View style={styles.aguardandoInfo}>
-                <Text style={styles.aguardandoTitulo}>Aguardando motorista ficar online...</Text>
+                <Text style={styles.aguardandoTitulo}>
+                  {aguardandoResposta ? t('passageiro.callingDriver') : t('passageiro.waitingOnline')}
+                </Text>
                 <Text style={styles.aguardandoMotorista}>{corridaPendente.motoristaNome}</Text>
                 <Text style={styles.aguardandoDestino}>📍 {corridaPendente.destino}</Text>
                 {corridaPendente.valor ? (
                   <Text style={styles.aguardandoValor}>💰 R$ {corridaPendente.valor}</Text>
                 ) : null}
+                {aguardandoResposta && (
+                  <Text style={styles.contagemTxt}>⏰ {contagemRegressiva}s restantes</Text>
+                )}
               </View>
             </View>
             <TouchableOpacity style={styles.corridaBtnCancelar} onPress={cancelarCorridaPendente}>
-              <Text style={styles.corridaBtnCancelarTxt}>✕ Cancelar solicitação</Text>
+              <Text style={styles.corridaBtnCancelarTxt}>{t('passageiro.cancelRequest')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Destino */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Para onde?</Text>
+          <Text style={styles.secaoTitulo}>{t('passageiro.whereTo')}</Text>
 
           {/* Atalhos Casa / Trabalho */}
           {(casaEndereco || trabalhoEndereco) && (
             <View style={styles.atalhosBtns}>
               {casaEndereco && (
                 <TouchableOpacity style={styles.atalhoBtn} onPress={() => calcularValores(casaEndereco.placeId, casaEndereco.descricao)}>
-                  <Text style={styles.atalhoTxt}>🏠 Casa</Text>
+                  <Text style={styles.atalhoTxt}>{t('passageiro.homeShortcut')}</Text>
                 </TouchableOpacity>
               )}
               {trabalhoEndereco && (
                 <TouchableOpacity style={styles.atalhoBtn} onPress={() => calcularValores(trabalhoEndereco.placeId, trabalhoEndereco.descricao)}>
-                  <Text style={styles.atalhoTxt}>💼 Trabalho</Text>
+                  <Text style={styles.atalhoTxt}>{t('passageiro.workShortcut')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -999,7 +1245,7 @@ export default function Passageiro() {
 
           <TextInput
             style={styles.input}
-            placeholder="Digite o destino..."
+            placeholder={t('passageiro.destinoInputPlaceholder')}
             placeholderTextColor="#4a5568"
             value={destino}
             onChangeText={buscarSugestoes}
@@ -1010,7 +1256,7 @@ export default function Passageiro() {
           {/* Histórico de buscas */}
           {mostrarHistorico && (
             <View style={styles.sugestoesBox}>
-              <Text style={styles.historicoLabel}>Buscas recentes</Text>
+              <Text style={styles.historicoLabel}>{t('passageiro.recentSearches')}</Text>
               {historicoBusca.map((h, i) => (
                 <TouchableOpacity key={i} style={styles.sugestaoItem} onPress={() => calcularValores(h.placeId, h.descricao)}>
                   <Text style={styles.historicoIcon}>🕐</Text>
@@ -1036,10 +1282,10 @@ export default function Passageiro() {
           {destinoPlaceId ? (
             <View style={styles.destinoAcoesRow}>
               <TouchableOpacity style={styles.destinoAcaoBtn} onPress={salvarCasa}>
-                <Text style={styles.destinoAcaoTxt}>🏠 Salvar como casa</Text>
+                <Text style={styles.destinoAcaoTxt}>{t('passageiro.saveAsHome')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.destinoAcaoBtn} onPress={salvarTrabalho}>
-                <Text style={styles.destinoAcaoTxt}>💼 Salvar como trabalho</Text>
+                <Text style={styles.destinoAcaoTxt}>{t('passageiro.saveAsWork')}</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -1047,21 +1293,21 @@ export default function Passageiro() {
           {/* Parada intermediária */}
           {destinoPlaceId && !mostrarParada && (
             <TouchableOpacity style={styles.addParadaBtn} onPress={() => setMostrarParada(true)}>
-              <Text style={styles.addParadaTxt}>+ Adicionar parada</Text>
+              <Text style={styles.addParadaTxt}>{t('passageiro.addStopBtn')}</Text>
             </TouchableOpacity>
           )}
 
           {mostrarParada && (
             <View style={styles.paradaContainer}>
               <View style={styles.paradaHeader}>
-                <Text style={styles.paradaLabel}>🔶 Parada intermediária</Text>
+                <Text style={styles.paradaLabel}>{t('passageiro.stopIntermediate')}</Text>
                 <TouchableOpacity onPress={removerParada}>
-                  <Text style={styles.paradaRemoverTxt}>Remover</Text>
+                  <Text style={styles.paradaRemoverTxt}>{t('passageiro.removeStopText')}</Text>
                 </TouchableOpacity>
               </View>
               <TextInput
                 style={styles.input}
-                placeholder="Digite a parada..."
+                placeholder={t('passageiro.stopInputPlaceholder')}
                 placeholderTextColor="#4a5568"
                 value={parada}
                 onChangeText={buscarSugestoesParada}
@@ -1083,18 +1329,18 @@ export default function Passageiro() {
         {calculando && (
           <View style={styles.calculandoBox}>
             <ActivityIndicator color="#4a9eff" />
-            <Text style={styles.calculandoTxt}>Calculando valores{paradaInfo ? ' com parada' : ''}...</Text>
+            <Text style={styles.calculandoTxt}>{paradaInfo ? t('passageiro.calculatingWithStop') : t('passageiro.calculatingValues')}</Text>
           </View>
         )}
 
         {/* Motoristas */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Meus Motoristas</Text>
+          <Text style={styles.secaoTitulo}>{t('passageiro.myDrivers')}</Text>
           {motoristas.length === 0 ? (
             <View style={styles.vazio}>
               <Text style={styles.vazioemoji}>🚗</Text>
-              <Text style={styles.vaziotxt}>Nenhum motorista adicionado</Text>
-              <Text style={styles.vaziossub}>Adicione motoristas pelo código de usuário</Text>
+              <Text style={styles.vaziotxt}>{t('passageiro.noDrivers')}</Text>
+              <Text style={styles.vaziossub}>{t('passageiro.noDriversSub')}</Text>
             </View>
           ) : (
             motoristas.map((m: any) => (
@@ -1133,14 +1379,14 @@ export default function Passageiro() {
                 </View>
 
                 {!m.online && !m.ultimaLocalizacao && (
-                  <Text style={styles.semLocalizacaoTxt}>Localização não disponível</Text>
+                  <Text style={styles.semLocalizacaoTxt}>{t('passageiro.noLocationAvailable')}</Text>
                 )}
 
                 {valores[m.id]?.estimado && (
                   <View style={styles.estimadoAvisoBox}>
-                    <Text style={styles.estimadoAvisoTxt}>⚠️ Valor estimado • localização desatualizada</Text>
+                    <Text style={styles.estimadoAvisoTxt}>{t('passageiro.estimatedValue')}</Text>
                     {valores[m.id].ultimaLocalizacaoEm ? (
-                      <Text style={styles.ultimaLocTxt}>Última localização: há {tempoDecorrido(valores[m.id].ultimaLocalizacaoEm)}</Text>
+                      <Text style={styles.ultimaLocTxt}>{t('passageiro.lastLocation', { time: tempoDecorrido(valores[m.id].ultimaLocalizacaoEm) })}</Text>
                     ) : null}
                   </View>
                 )}
@@ -1148,22 +1394,22 @@ export default function Passageiro() {
                 {valores[m.id] && (
                   <View style={styles.valorBox}>
                     <View style={styles.valorItem}>
-                      <Text style={styles.valorLabel}>Até você</Text>
+                      <Text style={styles.valorLabel}>{t('passageiro.toYou')}</Text>
                       <Text style={styles.valorTxt}>{valores[m.id].distMotoristaPassageiro} km</Text>
                     </View>
                     <View style={styles.valorItem}>
-                      <Text style={styles.valorLabel}>Ao destino</Text>
+                      <Text style={styles.valorLabel}>{t('passageiro.toDestination')}</Text>
                       <Text style={styles.valorTxt}>{valores[m.id].distPassageiroDestino} km</Text>
                     </View>
                     <View style={styles.valorItem}>
-                      <Text style={styles.valorLabel}>Total</Text>
+                      <Text style={styles.valorLabel}>{t('passageiro.total')}</Text>
                       <Text style={styles.valorPreco}>R$ {valores[m.id].preco}</Text>
                     </View>
                   </View>
                 )}
                 {valores[m.id] && !corridaAtiva && !corridaPendente && (
                   <TouchableOpacity style={styles.solicitarBtn} onPress={() => solicitarCorrida(m)}>
-                    <Text style={styles.solicitarTxt}>{m.online ? 'Solicitar corrida' : 'Enviar solicitação'}</Text>
+                    <Text style={styles.solicitarTxt}>{m.online ? t('passageiro.requestRide') : t('passageiro.requestOrSend')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -1174,24 +1420,24 @@ export default function Passageiro() {
         {/* Adicionar motorista */}
         {mostrarAdd ? (
           <View style={styles.addCard}>
-            <Text style={styles.addTitulo}>Digite o código do motorista</Text>
-            <TextInput style={styles.addInput} placeholder="Ex: AB12CD" placeholderTextColor="#64748b" value={codigoMotorista} onChangeText={setCodigoMotorista} autoCapitalize="characters" maxLength={6} />
+            <Text style={styles.addTitulo}>{t('passageiro.addDriverCode')}</Text>
+            <TextInput style={styles.addInput} placeholder={t('passageiro.driverCodePlaceholder')} placeholderTextColor="#64748b" value={codigoMotorista} onChangeText={setCodigoMotorista} autoCapitalize="characters" maxLength={6} />
             <View style={styles.addBtns}>
               <TouchableOpacity style={styles.cancelarBtn} onPress={() => setMostrarAdd(false)}>
-                <Text style={styles.cancelarTxt}>Cancelar</Text>
+                <Text style={styles.cancelarTxt}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmarBtn} onPress={adicionarMotorista} disabled={adicionando}>
-                <Text style={styles.confirmarTxt}>{adicionando ? 'Buscando...' : 'Adicionar'}</Text>
+                <Text style={styles.confirmarTxt}>{adicionando ? t('passageiro.addingDriver') : t('passageiro.addDriverBtn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <TouchableOpacity style={styles.addBtn} onPress={() => setMostrarAdd(true)}>
-            <Text style={styles.addTxt}>+ Adicionar Motorista</Text>
+            <Text style={styles.addTxt}>{t('passageiro.addDriverPlus')}</Text>
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -1290,6 +1536,7 @@ const styles = StyleSheet.create({
   msgMinha: { backgroundColor: '#1a2a4a', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
   msgDele: { backgroundColor: '#1a1f2e', alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
   msgTxt: { color: '#fff', fontSize: 14 },
+  msgRecibo: { color: '#4a9eff', fontSize: 10, alignSelf: 'flex-end', marginTop: 2 },
   chatInput: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   chatTextInput: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 14, padding: 14, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2a3044' },
   chatEnviar: { backgroundColor: '#4a9eff', width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -1306,6 +1553,9 @@ const styles = StyleSheet.create({
   avaliacaoBtn: { width: '100%', backgroundColor: '#f59e0b', borderRadius: 16, padding: 18, alignItems: 'center' },
   avaliacaoBtnTxt: { color: '#000', fontWeight: 'bold', fontSize: 16 },
   avaliacaoPularTxt: { color: '#4a5568', fontSize: 14, marginTop: 4 },
+  corridaValorFinalBox: { backgroundColor: '#0f2a1a', borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#22c55e' },
+  corridaValorFinalTxt: { color: '#94a3b8', fontSize: 12, marginBottom: 4 },
+  corridaValorFinalNum: { color: '#22c55e', fontSize: 28, fontWeight: 'bold' },
   avisoOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 32 },
   avisoCard: { backgroundColor: '#13161e', borderRadius: 24, padding: 28, alignItems: 'center', gap: 14, borderWidth: 1, borderColor: '#4a9eff', width: '100%' },
   avisoEmoji: { fontSize: 48 },
@@ -1361,4 +1611,20 @@ const styles = StyleSheet.create({
   estimadoAvisoTxt: { color: '#f59e0b', fontSize: 12, fontWeight: '600' },
   ultimaLocTxt: { color: '#94a3b8', fontSize: 11, marginTop: 3 },
   semLocalizacaoTxt: { color: '#4a5568', fontSize: 12, fontStyle: 'italic', marginTop: 8 },
+  aguardandoCardAtivo: { borderColor: '#4a9eff', backgroundColor: '#0a1a2e' },
+  pulseContainer: { alignItems: 'center', justifyContent: 'center' },
+  contagemTxt: { color: '#4a9eff', fontSize: 12, fontWeight: '700', marginTop: 4 },
+  paradaAtivaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  paradaAtivaCard: { backgroundColor: '#13161e', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 14, borderTopWidth: 1, borderColor: '#f59e0b', maxHeight: '80%' },
+  paradaAtivaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  paradaAtivaTitulo: { color: '#f59e0b', fontWeight: 'bold', fontSize: 18 },
+  paradaAtivaFechar: { color: '#64748b', fontSize: 20, fontWeight: 'bold' },
+  paradaAtivaInput: { backgroundColor: '#1a1f2e', borderRadius: 14, padding: 16, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#f59e0b' },
+  paradaAtivaConfirmBox: { backgroundColor: '#1a160a', borderRadius: 14, padding: 16, gap: 10, borderWidth: 1, borderColor: '#f59e0b66' },
+  paradaAtivaConfirmTxt: { color: '#fff', fontSize: 14 },
+  paradaAtivaAviso: { color: '#94a3b8', fontSize: 12 },
+  paradaAtivaConfirmBtn: { backgroundColor: '#f59e0b', borderRadius: 12, padding: 14, alignItems: 'center' },
+  paradaAtivaConfirmBtnTxt: { color: '#000', fontWeight: 'bold', fontSize: 15 },
+  addParadaAtivaBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#f59e0b33', alignItems: 'center' },
+  addParadaAtivaTxt: { color: '#f59e0b', fontSize: 13, fontWeight: '600' },
 });

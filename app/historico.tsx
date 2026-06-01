@@ -17,11 +17,13 @@ import {
     View
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
 
 export default function Historico() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [corridas, setCorridas] = useState<any[]>([]);
   const [tipo, setTipo] = useState('');
@@ -66,11 +68,16 @@ export default function Historico() {
       const campo = tipoUsuario === 'motorista' ? 'motoristaId' : 'passageiroId';
       const q = query(
         collection(db, 'corridas'),
-        where(campo, '==', uid),
-        orderBy('criadoEm', 'desc')
+        where(campo, '==', uid)
       );
       const snap = await getDocs(q);
-      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const lista = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a: any, b: any) => {
+          const ta = a.criadoEm?.toDate?.()?.getTime() ?? 0;
+          const tb = b.criadoEm?.toDate?.()?.getTime() ?? 0;
+          return tb - ta;
+        });
       setCorridas(lista);
 
       if (tipoUsuario === 'motorista') {
@@ -255,7 +262,7 @@ export default function Historico() {
                 <Text style={styles.motoristaNome}>{motoristaDados.nome}</Text>
                 {/* Telefone */}
                 <View style={styles.contatoBox}>
-                  <Text style={styles.contatoLabel}>Telefone</Text>
+                  <Text style={styles.contatoLabel}>{t('historico.contatoLabel')}</Text>
                   {motoristaDados.telefone ? (
                     <>
                       <Text style={styles.contatoNumero}>{motoristaDados.telefone}</Text>
@@ -274,7 +281,7 @@ export default function Historico() {
                 </View>
                 {/* WhatsApp */}
                 <View style={styles.contatoBox}>
-                  <Text style={styles.contatoLabel}>WhatsApp</Text>
+                  <Text style={styles.contatoLabel}>{t('historico.whatsappLabel')}</Text>
                   {motoristaDados.whatsapp ? (
                     <>
                       <Text style={styles.contatoNumero}>{motoristaDados.whatsapp}</Text>
@@ -300,7 +307,7 @@ export default function Historico() {
                 </View>
               </>
             ) : (
-              <Text style={styles.contatoVazio}>Informações de contato não disponíveis</Text>
+              <Text style={styles.contatoVazio}>{t('historico.contactNotAvailable')}</Text>
             )}
             <TouchableOpacity onPress={() => setMostrarContato(false)}>
               <Text style={styles.cancelarTxt}>{t('common.close')}</Text>
@@ -465,7 +472,7 @@ export default function Historico() {
           })
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </View>
   );

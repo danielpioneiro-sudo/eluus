@@ -1,17 +1,12 @@
 import { useRouter } from 'expo-router';
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
 
 type Periodo = 'hoje' | 'semana' | 'mes' | 'tudo';
-
-const PERIODOS: { id: Periodo; label: string }[] = [
-  { id: 'hoje', label: 'Hoje' },
-  { id: 'semana', label: '7 dias' },
-  { id: 'mes', label: '30 dias' },
-  { id: 'tudo', label: 'Tudo' },
-];
 
 function inicioDodia(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -27,7 +22,16 @@ function dataInicio(periodo: Periodo): Date | null {
 
 export default function Relatorio() {
   const router = useRouter();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [periodo, setPeriodo] = useState<Periodo>('semana');
+
+  const PERIODOS: { id: Periodo; label: string }[] = [
+    { id: 'hoje', label: t('relatorio.hoje') },
+    { id: 'semana', label: t('relatorio.semana') },
+    { id: 'mes', label: t('relatorio.mes') },
+    { id: 'tudo', label: t('relatorio.tudo') },
+  ];
   const [corridas, setCorridas] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(false);
 
@@ -41,15 +45,26 @@ export default function Relatorio() {
     setCarregando(true);
     try {
       const inicio = dataInicio(periodo);
-      const constraints: any[] = [
-        where('motoristaId', '==', uid),
-        where('status', '==', 'finalizada'),
-        orderBy('criadoEm', 'desc'),
-      ];
-      if (inicio) constraints.splice(2, 0, where('criadoEm', '>=', inicio));
-      const snap = await getDocs(query(collection(db, 'corridas'), ...constraints));
-      setCorridas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) {}
+      const snap = await getDocs(query(collection(db, 'corridas'), where('motoristaId', '==', uid)));
+      const lista = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter((c: any) => {
+          if (c.status !== 'finalizada') return false;
+          if (inicio) {
+            const t = c.criadoEm?.toDate?.()?.getTime() ?? 0;
+            if (t < inicio.getTime()) return false;
+          }
+          return true;
+        })
+        .sort((a: any, b: any) => {
+          const at = a.criadoEm?.toDate?.()?.getTime() ?? 0;
+          const bt = b.criadoEm?.toDate?.()?.getTime() ?? 0;
+          return bt - at;
+        });
+      setCorridas(lista);
+    } catch (e) {
+      console.error('Erro ao buscar relatório:', e);
+    }
     setCarregando(false);
   };
 
@@ -74,9 +89,9 @@ export default function Relatorio() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
-          <Text style={styles.voltarTxt}>← Voltar</Text>
+          <Text style={styles.voltarTxt}>{t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.titulo}>Relatório de corridas</Text>
+        <Text style={styles.titulo}>{t('relatorio.title')}</Text>
       </View>
 
       {/* Filtro de período */}
@@ -97,7 +112,7 @@ export default function Relatorio() {
       ) : corridas.length === 0 ? (
         <View style={styles.vazio}>
           <Text style={styles.vazioemoji}>📋</Text>
-          <Text style={styles.vaziotxt}>Nenhuma corrida neste período</Text>
+          <Text style={styles.vaziotxt}>{t('relatorio.noRides')}</Text>
         </View>
       ) : (
         <>
@@ -105,15 +120,15 @@ export default function Relatorio() {
           <View style={styles.resumoRow}>
             <View style={styles.resumoCard}>
               <Text style={styles.resumoValor}>{corridas.length}</Text>
-              <Text style={styles.resumoLabel}>corridas</Text>
+              <Text style={styles.resumoLabel}>{t('relatorio.rides')}</Text>
             </View>
             <View style={styles.resumoCard}>
               <Text style={styles.resumoValor}>R$ {totalValor.toFixed(2)}</Text>
-              <Text style={styles.resumoLabel}>faturado</Text>
+              <Text style={styles.resumoLabel}>{t('relatorio.earned')}</Text>
             </View>
             <View style={styles.resumoCard}>
               <Text style={styles.resumoValor}>{totalKm.toFixed(1)} km</Text>
-              <Text style={styles.resumoLabel}>rodados</Text>
+              <Text style={styles.resumoLabel}>{t('relatorio.driven')}</Text>
             </View>
           </View>
 
@@ -143,7 +158,7 @@ export default function Relatorio() {
         </>
       )}
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: insets.bottom + 24 }} />
     </ScrollView>
   );
 }

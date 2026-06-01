@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { changeLang, LANGUAGES } from '../i18n';
-import { EmailAuthProvider, deleteUser, reauthenticateWithCredential, sendEmailVerification, updateEmail, updatePassword } from 'firebase/auth';
+import { EmailAuthProvider, deleteUser, reauthenticateWithCredential, sendEmailVerification, signOut, updateEmail, updatePassword } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
@@ -18,11 +18,13 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
 
 export default function Perfil() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [nome, setNome] = useState('');
@@ -95,11 +97,11 @@ export default function Perfil() {
 
   const salvarPerfil = async () => {
     if (!nome.trim()) {
-      Alert.alert('Atenção', 'O nome não pode estar vazio');
+      Alert.alert(t('common.attention'), t('perfil.nameEmpty'));
       return;
     }
     if (tipo === 'motorista' && !validarTelefone(telefone)) {
-      Alert.alert('Atenção', 'Informe um telefone válido: (00) 00000-0000 ou +1 555 1234567');
+      Alert.alert(t('common.attention'), t('perfil.phoneInvalid'));
       return;
     }
     setSalvando(true);
@@ -113,9 +115,9 @@ export default function Perfil() {
         dados.cor = cor;
       }
       await updateDoc(doc(db, 'usuarios', uid), dados);
-      Alert.alert('Salvo! ✅', 'Perfil atualizado com sucesso.');
+      Alert.alert(t('perfil.saved'), t('perfil.savedMsg'));
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível salvar o perfil');
+      Alert.alert(t('common.error'), 'Não foi possível salvar o perfil');
     }
     setSalvando(false);
   };
@@ -124,7 +126,7 @@ export default function Perfil() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permissão necessária', 'Precisamos acessar suas fotos');
+        Alert.alert(t('perfil.permissionRequired'), t('perfil.photoPermission'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -139,10 +141,10 @@ export default function Perfil() {
         setFotoUri(base64);
         const uid = auth.currentUser?.uid;
         if (uid) await updateDoc(doc(db, 'usuarios', uid), { fotoUri: base64 });
-        Alert.alert('Foto atualizada! ✅');
+        Alert.alert(t('perfil.photoUpdated'));
       }
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível atualizar a foto');
+      Alert.alert(t('common.error'), 'Não foi possível atualizar a foto');
     }
   };
 
@@ -158,13 +160,13 @@ export default function Perfil() {
 
   const alterarSenha = async () => {
     if (!senhaAtual || !novaSenha || !confirmarSenha) {
-      Alert.alert('Atenção', 'Preencha todos os campos'); return;
+      Alert.alert(t('common.attention'), t('perfil.fillAllFields')); return;
     }
     if (novaSenha.length < 6) {
-      Alert.alert('Atenção', 'A nova senha deve ter pelo menos 6 caracteres'); return;
+      Alert.alert(t('common.attention'), t('perfil.passwordMin6')); return;
     }
     if (novaSenha !== confirmarSenha) {
-      Alert.alert('Atenção', 'A nova senha e a confirmação não coincidem'); return;
+      Alert.alert(t('common.attention'), t('perfil.passwordMismatch')); return;
     }
     setAlterando(true);
     try {
@@ -173,12 +175,12 @@ export default function Perfil() {
       await reauthenticateWithCredential(user, cred);
       await updatePassword(user, novaSenha);
       fecharModalSenha();
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!');
+      Alert.alert(t('common.success'), t('perfil.passwordChanged'));
     } catch (e: any) {
       if (e.code === 'auth/wrong-password') {
-        Alert.alert('Erro', 'Senha atual incorreta');
+        Alert.alert(t('common.error'), t('perfil.wrongPassword'));
       } else {
-        Alert.alert('Erro', 'Não foi possível alterar a senha');
+        Alert.alert(t('common.error'), 'Não foi possível alterar a senha');
       }
     }
     setAlterando(false);
@@ -186,7 +188,7 @@ export default function Perfil() {
 
   const alterarEmail = async () => {
     if (!senhaAtual || !novoEmail.trim()) {
-      Alert.alert('Atenção', 'Preencha todos os campos'); return;
+      Alert.alert(t('common.attention'), t('perfil.fillAllFields')); return;
     }
     setAlterando(true);
     try {
@@ -199,36 +201,36 @@ export default function Perfil() {
       await updateDoc(doc(db, 'usuarios', uid), { email: novoEmail.trim() });
       setEmail(novoEmail.trim());
       fecharModalEmail();
-      Alert.alert('Sucesso', 'Email alterado! Verifique sua nova caixa de entrada.');
+      Alert.alert(t('common.success'), t('perfil.emailChanged'));
     } catch (e: any) {
       if (e.code === 'auth/wrong-password') {
-        Alert.alert('Erro', 'Senha incorreta');
+        Alert.alert(t('common.error'), t('perfil.wrongPassword2'));
       } else if (e.code === 'auth/email-already-in-use') {
-        Alert.alert('Erro', 'Esse email já está em uso');
+        Alert.alert(t('common.error'), t('perfil.emailInUse'));
       } else {
-        Alert.alert('Erro', 'Não foi possível alterar o email');
+        Alert.alert(t('common.error'), 'Não foi possível alterar o email');
       }
     }
     setAlterando(false);
   };
 
   const salvarCodigo = async () => {
-    if (novoCodigo.length !== 6) { Alert.alert('Atenção', 'O código deve ter exatamente 6 caracteres'); return; }
+    if (novoCodigo.length !== 6) { Alert.alert(t('common.attention'), t('perfil.codeSixChars')); return; }
     if (novoCodigo === codigo) { setEditandoCodigo(false); return; }
     setSalvandoCodigo(true);
     try {
       const uid = auth.currentUser?.uid;
       const snap = await getDocs(query(collection(db, 'usuarios'), where('codigo', '==', novoCodigo)));
       if (!snap.empty && snap.docs[0].id !== uid) {
-        Alert.alert('Código em uso', 'Esse código já pertence a outro usuário. Escolha outro.');
+        Alert.alert(t('perfil.codeInUse'), t('perfil.codeInUseMsg'));
         setSalvandoCodigo(false);
         return;
       }
       await updateDoc(doc(db, 'usuarios', uid!), { codigo: novoCodigo });
       setCodigo(novoCodigo);
       setEditandoCodigo(false);
-      Alert.alert('Código atualizado!', `Seu novo código é ${novoCodigo}`);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível atualizar o código'); }
+      Alert.alert(t('perfil.codeUpdated'), t('perfil.codeUpdatedMsg', { code: novoCodigo }));
+    } catch (e) { Alert.alert(t('common.error'), 'Não foi possível atualizar o código'); }
     setSalvandoCodigo(false);
   };
 
@@ -294,13 +296,13 @@ export default function Perfil() {
             <TouchableOpacity style={styles.qrFechar} onPress={() => setMostrarQR(false)}>
               <Text style={styles.qrFecharTxt}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.qrTitulo}>Meu QR Code</Text>
+            <Text style={styles.qrTitulo}>{t('perfil.myQrCode')}</Text>
             <Image
               source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('eluus://cadastro?codigo=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }}
               style={styles.qrImage}
             />
             <Text style={styles.qrCodigo}>{codigo}</Text>
-            <Text style={styles.qrInfo}>Mostre para que te adicionem sem digitar o código</Text>
+            <Text style={styles.qrInfo}>{t('perfil.qrInfo')}</Text>
           </View>
         </View>
       </Modal>
@@ -308,9 +310,9 @@ export default function Perfil() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
-          <Text style={styles.voltarTxt}>← Voltar</Text>
+          <Text style={styles.voltarTxt}>{t('common.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.titulo}>Meu Perfil</Text>
+        <Text style={styles.titulo}>{t('perfil.title')}</Text>
         <View style={{ width: 80 }} />
       </View>
 
@@ -331,14 +333,14 @@ export default function Perfil() {
         <Text style={styles.fotoNome}>{nome}</Text>
         <View style={styles.tipoBadge}>
           <Text style={styles.tipoBadgeTxt}>
-            {tipo === 'motorista' ? '🚗 Motorista' : '🧍 Passageiro'}
+            {tipo === 'motorista' ? t('perfil.driverType') : t('perfil.passengerType')}
           </Text>
         </View>
       </View>
 
       {/* Código */}
       <View style={styles.codigoCard}>
-        <Text style={styles.codigoLabel}>Meu código</Text>
+        <Text style={styles.codigoLabel}>{t('perfil.myCode')}</Text>
         {editandoCodigo ? (
           <View style={styles.codigoEditRow}>
             <TextInput
@@ -354,40 +356,40 @@ export default function Perfil() {
               <Text style={styles.codigoSalvarTxt}>{salvandoCodigo ? '...' : 'OK'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setEditandoCodigo(false); setNovoCodigo(codigo); }}>
-              <Text style={styles.codigoCancelarTxt}>Cancelar</Text>
+              <Text style={styles.codigoCancelarTxt}>{t('perfil.cancelCode')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <Text style={styles.codigoValor}>{codigo}</Text>
         )}
         <Text style={styles.codigoInfo}>
-          {tipo === 'motorista' ? 'Compartilhe com seus passageiros' : 'Seu código de identificação'}
+          {tipo === 'motorista' ? t('perfil.shareWithPassengers') : t('perfil.yourCode')}
         </Text>
         <View style={styles.codigoBtnsRow}>
           <TouchableOpacity style={styles.codigoAcaoBtn} onPress={() => { setNovoCodigo(codigo); setEditandoCodigo(true); }}>
-            <Text style={styles.codigoAcaoTxt}>✏️ Personalizar</Text>
+            <Text style={styles.codigoAcaoTxt}>{t('perfil.customize')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.codigoAcaoBtn} onPress={() => setMostrarQR(true)}>
-            <Text style={styles.codigoAcaoTxt}>📱 QR Code</Text>
+            <Text style={styles.codigoAcaoTxt}>{t('perfil.qrCode')}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Dados pessoais */}
       <View style={styles.secao}>
-        <Text style={styles.secaoTitulo}>Dados Pessoais</Text>
+        <Text style={styles.secaoTitulo}>{t('perfil.personalData')}</Text>
 
-        <Text style={styles.label}>Nome completo</Text>
-        <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder="Seu nome completo" placeholderTextColor="#4a5568" />
+        <Text style={styles.label}>{t('perfil.fullName')}</Text>
+        <TextInput style={styles.input} value={nome} onChangeText={setNome} placeholder={t('perfil.namePlaceholder')} placeholderTextColor="#4a5568" />
 
-        <Text style={styles.label}>E-mail</Text>
+        <Text style={styles.label}>{t('perfil.email')}</Text>
         <View style={styles.inputDisabled}>
           <Text style={styles.inputDisabledTxt}>{email}</Text>
         </View>
 
         {pais === 'BR' && cpf ? (
           <>
-            <Text style={styles.label}>CPF</Text>
+            <Text style={styles.label}>{t('perfil.cpf')}</Text>
             <View style={styles.inputDisabled}>
               <Text style={styles.inputDisabledTxt}>
                 {cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
@@ -401,33 +403,33 @@ export default function Perfil() {
             <Text style={styles.phoneVerifIcon}>{phoneVerified ? '✅' : '⏳'}</Text>
             <Text style={styles.phoneVerifTxt}>
               {phoneVerified
-                ? 'Telefone verificado por SMS'
-                : 'Telefone pendente de verificação'}
+                ? t('perfil.phoneVerified')
+                : t('perfil.phonePending')}
             </Text>
           </View>
         )}
 
         <Text style={styles.label}>
-          Telefone{tipo === 'motorista' ? ' *' : ''}
+          {t('perfil.phone')}{tipo === 'motorista' ? ' *' : ''}
         </Text>
         <TextInput
           style={[styles.input, tipo === 'motorista' && !telefone.trim() && styles.inputRequired]}
           value={telefone}
           onChangeText={setTelefone}
-          placeholder="(00) 00000-0000"
+          placeholder={t('perfil.phonePlaceholder')}
           placeholderTextColor="#4a5568"
           keyboardType="phone-pad"
         />
         {tipo === 'motorista' && (
-          <Text style={styles.phoneWarning}>📞 Número obrigatório para contato dos passageiros</Text>
+          <Text style={styles.phoneWarning}>📞 {t('perfil.phoneRequired')}</Text>
         )}
 
-        <Text style={styles.label}>WhatsApp (opcional)</Text>
+        <Text style={styles.label}>{t('perfil.whatsapp')}</Text>
         <TextInput
           style={styles.input}
           value={whatsapp}
           onChangeText={setWhatsapp}
-          placeholder="+55 (00) 00000-0000"
+          placeholder={t('perfil.whatsappPlaceholder')}
           placeholderTextColor="#4a5568"
           keyboardType="phone-pad"
         />
@@ -436,30 +438,30 @@ export default function Perfil() {
       {/* Dados do veículo (só motorista) */}
       {tipo === 'motorista' && (
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Dados do Veículo</Text>
+          <Text style={styles.secaoTitulo}>{t('perfil.vehicleData')}</Text>
 
           {pais === 'BR' && (
             <>
-              <Text style={styles.label}>CNH</Text>
+              <Text style={styles.label}>{t('perfil.cnh')}</Text>
               <View style={styles.inputDisabled}>
                 <Text style={styles.inputDisabledTxt}>{cnh || '—'}</Text>
               </View>
             </>
           )}
 
-          <Text style={styles.label}>Modelo do veículo</Text>
-          <TextInput style={styles.input} value={veiculo} onChangeText={setVeiculo} placeholder="Ex: HB20, Onix, Polo..." placeholderTextColor="#4a5568" />
+          <Text style={styles.label}>{t('perfil.vehicleModel')}</Text>
+          <TextInput style={styles.input} value={veiculo} onChangeText={setVeiculo} placeholder={t('perfil.vehiclePlaceholder')} placeholderTextColor="#4a5568" />
 
-          <Text style={styles.label}>Placa</Text>
-          <TextInput style={styles.input} value={placa} onChangeText={setPlaca} placeholder="Ex: ABC1234" placeholderTextColor="#4a5568" autoCapitalize="characters" maxLength={7} />
+          <Text style={styles.label}>{t('perfil.plate')}</Text>
+          <TextInput style={styles.input} value={placa} onChangeText={setPlaca} placeholder={t('perfil.platePlaceholder')} placeholderTextColor="#4a5568" autoCapitalize="characters" maxLength={7} />
 
-          <Text style={styles.label}>Cor</Text>
-          <TextInput style={styles.input} value={cor} onChangeText={setCor} placeholder="Ex: Prata, Branco, Preto..." placeholderTextColor="#4a5568" />
+          <Text style={styles.label}>{t('perfil.color')}</Text>
+          <TextInput style={styles.input} value={cor} onChangeText={setCor} placeholder={t('perfil.colorPlaceholder')} placeholderTextColor="#4a5568" />
         </View>
       )}
 
       <TouchableOpacity style={styles.salvarBtn} onPress={salvarPerfil} disabled={salvando}>
-        <Text style={styles.salvarTxt}>{salvando ? 'Salvando...' : 'Salvar alterações'}</Text>
+        <Text style={styles.salvarTxt}>{salvando ? t('common.saving') : t('common.save')}</Text>
       </TouchableOpacity>
 
       {/* Seletor de idioma */}
@@ -483,15 +485,15 @@ export default function Perfil() {
 
       {/* Segurança da Conta */}
       <View style={[styles.secao, { marginTop: 4 }]}>
-        <Text style={styles.secaoTitulo}>Segurança da Conta</Text>
+        <Text style={styles.secaoTitulo}>{t('perfil.security')}</Text>
         <TouchableOpacity style={styles.segBtn} onPress={() => setModalSenha(true)}>
           <Text style={styles.segBtnIcon}>🔑</Text>
-          <Text style={styles.segBtnTxt}>Alterar senha</Text>
+          <Text style={styles.segBtnTxt}>{t('perfil.changePassword')}</Text>
           <Text style={styles.segBtnArrow}>›</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.segBtn} onPress={() => setModalEmail(true)}>
           <Text style={styles.segBtnIcon}>✉️</Text>
-          <Text style={styles.segBtnTxt}>Alterar email</Text>
+          <Text style={styles.segBtnTxt}>{t('perfil.changeEmail')}</Text>
           <Text style={styles.segBtnArrow}>›</Text>
         </TouchableOpacity>
       </View>
@@ -500,24 +502,24 @@ export default function Perfil() {
       <Modal visible={modalSenha} transparent animationType="slide" onRequestClose={fecharModalSenha}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitulo}>Alterar senha</Text>
+            <Text style={styles.modalTitulo}>{t('perfil.changePassword')}</Text>
 
-            <Text style={styles.label}>Senha atual</Text>
+            <Text style={styles.label}>{t('perfil.currentPassword')}</Text>
             <TextInput style={styles.input} value={senhaAtual} onChangeText={setSenhaAtual} secureTextEntry placeholder="••••••" placeholderTextColor="#4a5568" />
 
-            <Text style={styles.label}>Nova senha</Text>
-            <TextInput style={styles.input} value={novaSenha} onChangeText={setNovaSenha} secureTextEntry placeholder="Mín. 6 caracteres" placeholderTextColor="#4a5568" />
+            <Text style={styles.label}>{t('perfil.newPassword')}</Text>
+            <TextInput style={styles.input} value={novaSenha} onChangeText={setNovaSenha} secureTextEntry placeholder={t('perfil.newPasswordPlaceholder')} placeholderTextColor="#4a5568" />
 
-            <Text style={styles.label}>Confirmar nova senha</Text>
-            <TextInput style={styles.input} value={confirmarSenha} onChangeText={setConfirmarSenha} secureTextEntry placeholder="Repita a nova senha" placeholderTextColor="#4a5568" />
+            <Text style={styles.label}>{t('perfil.confirmPassword')}</Text>
+            <TextInput style={styles.input} value={confirmarSenha} onChangeText={setConfirmarSenha} secureTextEntry placeholder={t('perfil.repeatPasswordPlaceholder')} placeholderTextColor="#4a5568" />
 
             <TouchableOpacity style={styles.modalBtn} onPress={alterarSenha} disabled={alterando}>
               {alterando
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.modalBtnTxt}>Salvar nova senha</Text>}
+                : <Text style={styles.modalBtnTxt}>{t('perfil.saveNewPassword')}</Text>}
             </TouchableOpacity>
             <TouchableOpacity onPress={fecharModalSenha} disabled={alterando}>
-              <Text style={styles.modalCancelar}>Cancelar</Text>
+              <Text style={styles.modalCancelar}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -527,25 +529,49 @@ export default function Perfil() {
       <Modal visible={modalEmail} transparent animationType="slide" onRequestClose={fecharModalEmail}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitulo}>Alterar email</Text>
+            <Text style={styles.modalTitulo}>{t('perfil.changeEmail')}</Text>
 
-            <Text style={styles.label}>Senha atual</Text>
+            <Text style={styles.label}>{t('perfil.currentPassword')}</Text>
             <TextInput style={styles.input} value={senhaAtual} onChangeText={setSenhaAtual} secureTextEntry placeholder="••••••" placeholderTextColor="#4a5568" />
 
-            <Text style={styles.label}>Novo email</Text>
-            <TextInput style={styles.input} value={novoEmail} onChangeText={setNovoEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} placeholder="novo@email.com" placeholderTextColor="#4a5568" />
+            <Text style={styles.label}>{t('perfil.newEmail')}</Text>
+            <TextInput style={styles.input} value={novoEmail} onChangeText={setNovoEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} placeholder={t('perfil.newEmailPlaceholder')} placeholderTextColor="#4a5568" />
 
             <TouchableOpacity style={styles.modalBtn} onPress={alterarEmail} disabled={alterando}>
               {alterando
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.modalBtnTxt}>Salvar novo email</Text>}
+                : <Text style={styles.modalBtnTxt}>{t('perfil.saveNewEmail')}</Text>}
             </TouchableOpacity>
             <TouchableOpacity onPress={fecharModalEmail} disabled={alterando}>
-              <Text style={styles.modalCancelar}>Cancelar</Text>
+              <Text style={styles.modalCancelar}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* Sair da conta */}
+      <TouchableOpacity
+        style={styles.sairContaBtn}
+        onPress={() => {
+          Alert.alert(t('perfil.signOutTitle'), t('perfil.signOutMsg'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: t('perfil.signOutBtn'),
+              style: 'destructive',
+              onPress: async () => {
+                const uid = auth.currentUser?.uid;
+                if (uid) {
+                  const { updateDoc: _upd, doc: _doc } = await import('firebase/firestore');
+                  await _upd(_doc(db, 'usuarios', uid), { online: false }).catch(() => null);
+                }
+                await signOut(auth);
+                router.replace('/');
+              },
+            },
+          ]);
+        }}>
+        <Text style={styles.sairContaTxt}>{t('perfil.signOut')}</Text>
+      </TouchableOpacity>
 
       {/* Excluir conta */}
       <TouchableOpacity style={styles.excluirContaBtn} onPress={confirmarExcluirConta}>
@@ -586,7 +612,7 @@ export default function Perfil() {
         </View>
       </Modal>
 
-      <View style={{ height: 40 }} />
+      <View style={{ height: insets.bottom + 24 }} />
     </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -660,6 +686,8 @@ const styles = StyleSheet.create({
   langFlag: { fontSize: 24 },
   langTxt: { color: '#64748b', fontSize: 11, fontWeight: '600' },
   langTxtAtivo: { color: '#4a9eff' },
-  excluirContaBtn: { alignItems: 'center', paddingVertical: 20, marginTop: 8 },
+  sairContaBtn: { alignItems: 'center', paddingVertical: 16, marginTop: 8 },
+  sairContaTxt: { color: '#94a3b8', fontSize: 15 },
+  excluirContaBtn: { alignItems: 'center', paddingVertical: 20, marginTop: 0 },
   excluirContaTxt: { color: '#ef4444', fontSize: 14, opacity: 0.7 },
 });

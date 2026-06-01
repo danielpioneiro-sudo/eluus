@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
 
 function getPais(): string {
@@ -56,6 +57,7 @@ function validarTelefoneIntl(tel: string): boolean {
 
 export default function CompletarCadastro() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { nome: nomeParam = '', email: emailParam = '' } = useLocalSearchParams<{
     nome: string;
     email: string;
@@ -289,7 +291,7 @@ export default function CompletarCadastro() {
           <Text style={styles.btntxt}>{loading ? 'Salvando...' : 'Concluir cadastro'}</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

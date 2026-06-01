@@ -7,17 +7,21 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth } from '../firebaseConfig';
 import { navegarDashboard } from '../utils/navegarDashboard';
 
 export default function Login() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,6 +49,10 @@ export default function Login() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <Text style={styles.backTxt}>←</Text>
+      </TouchableOpacity>
       <Image
         source={require('../assets/images/logo-completa.png')}
         style={styles.logo}
@@ -59,6 +67,8 @@ export default function Login() {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
       />
       <TextInput
         style={styles.input}
@@ -67,6 +77,8 @@ export default function Login() {
         value={senha}
         onChangeText={setSenha}
         secureTextEntry
+        autoComplete="current-password"
+        textContentType="password"
       />
 
       <TouchableOpacity style={styles.btn} onPress={entrar} disabled={loading}>
@@ -84,6 +96,8 @@ export default function Login() {
       <TouchableOpacity onPress={() => router.push('/admin')} style={styles.adminLink}>
         <Text style={styles.adminLinkTxt}>·</Text>
       </TouchableOpacity>
+      <View style={{ height: insets.bottom + 24 }} />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -93,7 +107,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0d0f14',
     padding: 32,
-    paddingTop: 80,
+    paddingTop: 60,
+  },
+  backBtn: {
+    marginBottom: 16,
+  },
+  backTxt: {
+    color: '#4a9eff',
+    fontSize: 28,
   },
   logo: {
     width: '100%',

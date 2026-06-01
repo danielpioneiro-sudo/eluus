@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -10,8 +11,8 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
   );
 }
 
-function P({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.paragrafo}>{children}</Text>;
+function P({ children, style }: { children: React.ReactNode; style?: object }) {
+  return <Text style={[styles.paragrafo, style]}>{children}</Text>;
 }
 
 function Item({ children }: { children: React.ReactNode }) {
@@ -69,12 +70,13 @@ function CheckItem({ children }: { children: React.ReactNode }) {
 
 export default function ConsentimentoLocalizacao() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const dataConsentimento = new Date().toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.voltarBtn}>
           <Text style={styles.voltarTxt}>← Voltar</Text>

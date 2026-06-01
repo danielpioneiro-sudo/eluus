@@ -3,10 +3,10 @@ import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Alert,
   AppState,
@@ -52,6 +52,7 @@ function calcularDistancia(lat1: number, lng1: number, lat2: number, lng2: numbe
 export default function Motorista() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [online, setOnline] = useState(false);
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [precoPorKm, setPrecoPorKm] = useState(2.5);
@@ -61,7 +62,7 @@ export default function Motorista() {
   const [solicitacaoAtiva, setSolicitacaoAtiva] = useState<any>(null);
   const [corridaAceita, setCorridaAceita] = useState<any>(null);
   const [mostrarNavegacao, setMostrarNavegacao] = useState(false);
-  const [navegandoPara, setNavegandoPara] = useState<'passageiro' | 'destino'>('passageiro');
+  const [navegandoPara, setNavegandoPara] = useState<'passageiro' | 'parada' | 'destino'>('passageiro');
   const [mostrarChat, setMostrarChat] = useState(false);
   const [mensagens, setMensagens] = useState<any[]>([]);
   const [novaMensagem, setNovaMensagem] = useState('');
@@ -69,6 +70,7 @@ export default function Motorista() {
   const corridaAceitaRef = useRef<any>(null);
   const avisouChegadaRef = useRef(false);
   const chatAbertoRef = useRef(false);
+  const chatScrollRef = useRef<any>(null);
   const unsubUsuarioRef = useRef<any>(null);
   const unsubCorridasRef = useRef<any>(null);
   const unsubChatRef = useRef<any>(null);
@@ -90,6 +92,7 @@ export default function Motorista() {
   const [denunciando, setDenunciando] = useState(false);
   const [msgsPosCorridaBadge, setMsgsPosCorridaBadge] = useState(0);
   const unsubsMsgsPosRef = useRef<any[]>([]);
+  const unsubCorridaAtivaRef = useRef<any>(null);
 
   useEffect(() => {
     registrarParaNotificacoes();
@@ -99,13 +102,7 @@ export default function Motorista() {
     restaurarCorrida();
     escutarMsgsPosCorridaMotorista();
     const appStateSub = AppState.addEventListener('change', async (nextState) => {
-      const uid = auth.currentUser?.uid;
-      if (!uid) return;
-      if (nextState === 'background' || nextState === 'inactive') {
-        if (!corridaAceitaRef.current) {
-          await updateDoc(doc(db, 'usuarios', uid), { online: false });
-        }
-      } else if (nextState === 'active') {
+      if (nextState === 'active') {
         verificarCorridasPendentesAoVoltar();
       }
     });
@@ -116,13 +113,14 @@ export default function Motorista() {
       if (unsubCorridasRef.current) unsubCorridasRef.current();
       if (unsubChatRef.current) unsubChatRef.current();
       if (locationWatchRef.current) locationWatchRef.current.remove();
+      if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
       unsubsMsgsPosRef.current.forEach(u => u());
       appStateSub.remove();
     };
   }, []);
 
   useEffect(() => {
-    if (corridaAceitaRef.current && navegandoPara === 'passageiro' && corridaAceitaRef.current.passageiroLat) {
+    if (corridaAceitaRef.current && (navegandoPara === 'passageiro' || navegandoPara === 'parada') && corridaAceitaRef.current.passageiroLat) {
       iniciarRastreamento();
     } else {
       pararRastreamento();
@@ -223,12 +221,31 @@ export default function Motorista() {
     }
   };
 
+  const escutarCorridaAtiva = (corridaId: string) => {
+    if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
+    unsubCorridaAtivaRef.current = onSnapshot(doc(db, 'corridas', corridaId), (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      const atual = corridaAceitaRef.current;
+      const temNovaParada = data.paradaDescricao && (!atual?.paradaDescricao || data.paradaDescricao !== atual.paradaDescricao);
+      const novoValor = data.valor !== atual?.valor;
+      if (temNovaParada || novoValor) {
+        const msgs: string[] = [];
+        if (temNovaParada) msgs.push(t('motorista.rideUpdateStop', { stop: data.paradaDescricao }));
+        if (novoValor) msgs.push(t('motorista.rideUpdateValue', { value: data.valor }));
+        Alert.alert(t('motorista.rideUpdated'), msgs.join('\n'));
+      }
+      corridaAceitaRef.current = { id: corridaId, ...data };
+      setCorridaAceita({ id: corridaId, ...data });
+    });
+  };
+
   const avisarChegada = async (corridaId: string, automatico = false) => {
     try {
       await updateDoc(doc(db, 'corridas', corridaId), {
         motoristaChegou: true, chegadaEm: new Date(),
       });
-      if (!automatico) Alert.alert('Aviso enviado!', 'O passageiro foi notificado que você chegou.');
+      if (!automatico) Alert.alert(t('motorista.arrivedNotification'), t('motorista.arrivedNotificationMsg'));
     } catch (e) {}
   };
 
@@ -253,13 +270,24 @@ export default function Motorista() {
     } catch (e) {}
   };
 
+  const marcarLidasMotorista = (msgs: any[], corridaId: string) => {
+    msgs.forEach(m => {
+      if (m.remetente === 'passageiro' && m.lida !== true) {
+        updateDoc(doc(db, 'corridas', corridaId, 'mensagens', m.id), { lida: true }).catch(() => null);
+      }
+    });
+  };
+
   const escutarChat = (corridaId: string) => {
     if (unsubChatRef.current) unsubChatRef.current();
     const q = query(collection(db, 'corridas', corridaId, 'mensagens'), orderBy('criadoEm', 'asc'));
     let primeiraLeitura = true;
     unsubChatRef.current = onSnapshot(q, (snap) => {
-      const novas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const novas: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMensagens(novas);
+      if (chatAbertoRef.current) {
+        marcarLidasMotorista(novas, corridaId);
+      }
       if (!primeiraLeitura) {
         const ultima = novas[novas.length - 1];
         if (ultima?.remetente === 'passageiro' && !chatAbertoRef.current) {
@@ -281,10 +309,15 @@ export default function Motorista() {
         criadoEm: new Date(),
       });
       setNovaMensagem('');
-    } catch (e) { Alert.alert('Erro', 'Não foi possível enviar a mensagem'); }
+    } catch (e) { Alert.alert(t('common.error'), t('motorista.errSendMsg')); }
   };
 
-  const abrirChat = () => { chatAbertoRef.current = true; setMsgNaoLidas(0); setMostrarChat(true); };
+  const abrirChat = () => {
+    chatAbertoRef.current = true;
+    setMsgNaoLidas(0);
+    setMostrarChat(true);
+    if (corridaAceitaRef.current) marcarLidasMotorista(mensagens, corridaAceitaRef.current.id);
+  };
   const fecharChat = () => { chatAbertoRef.current = false; setMostrarChat(false); };
 
   const escutarUsuario = () => {
@@ -333,12 +366,13 @@ export default function Motorista() {
       ));
       if (snap.empty) return;
       const corridaDoc = snap.docs[0];
-      const corridaData = { id: corridaDoc.id, ...corridaDoc.data() };
+      const corridaData: any = { id: corridaDoc.id, ...corridaDoc.data() };
       corridaAceitaRef.current = corridaData;
       setCorridaAceita(corridaData);
       avisouChegadaRef.current = corridaData.motoristaChegou || false;
       setNavegandoPara(corridaData.motoristaChegou ? 'destino' : 'passageiro');
       escutarChat(corridaDoc.id);
+      escutarCorridaAtiva(corridaDoc.id);
       await updateDoc(doc(db, 'usuarios', uid), { online: true });
     } catch (e) {}
   };
@@ -392,7 +426,7 @@ export default function Motorista() {
         await updateDoc(doc(db, 'usuarios', uid), { online: true });
       }
     } catch (e: any) {
-      Alert.alert('Erro', e.message || 'Não foi possível atualizar status');
+      Alert.alert(t('common.error'), e.message || 'Não foi possível atualizar status');
       return;
     }
     if (valor) {
@@ -415,11 +449,11 @@ export default function Motorista() {
     pararNotificacao();
     if (aceitar && creditos <= 0) {
       Alert.alert(
-        'Sem créditos',
-        'Você não tem créditos para aceitar corridas. Compre um pacote para continuar.',
+        t('motorista.noCredits'),
+        t('motorista.noCreditsMsg'),
         [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Comprar créditos', onPress: () => router.push('/comprar') },
+          { text: t('motorista.later'), style: 'cancel' },
+          { text: t('motorista.buyNow'), onPress: () => router.push('/comprar') },
         ]
       );
       return;
@@ -446,24 +480,26 @@ export default function Motorista() {
         setNavegandoPara('passageiro');
         setMostrarNavegacao(true);
         escutarChat(corridaId);
+        escutarCorridaAtiva(corridaId);
       } else {
         await updateDoc(doc(db, 'corridas', corridaId), {
           status: 'recusada', atualizadoEm: new Date(),
         });
         setSolicitacaoAtiva(null);
       }
-    } catch (e) { Alert.alert('Erro', 'Não foi possível responder a solicitação'); }
+    } catch (e) { Alert.alert(t('common.error'), t('motorista.errResponse')); }
   };
 
   const cancelarCorrida = async () => {
     if (!corridaAceitaRef.current) return;
-    Alert.alert('Cancelar corrida?', 'O passageiro será notificado.', [
-      { text: 'Não', style: 'cancel' },
-      { text: 'Sim, cancelar', style: 'destructive', onPress: async () => {
+    Alert.alert(t('motorista.cancelRideTitle'), t('motorista.cancelRideMsg'), [
+      { text: t('common.no'), style: 'cancel' },
+      { text: t('motorista.yesCancel'), style: 'destructive', onPress: async () => {
         await updateDoc(doc(db, 'corridas', corridaAceitaRef.current.id), {
           status: 'cancelada', canceladoPor: 'motorista', canceladoEm: new Date(),
         });
         pararRastreamento();
+        if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
         corridaAceitaRef.current = null;
         setCorridaAceita(null);
         setMostrarNavegacao(false);
@@ -503,15 +539,16 @@ export default function Motorista() {
 
   const encerrarCorrida = async () => {
     if (!corridaAceitaRef.current) return;
-    Alert.alert('Encerrar corrida?', 'Confirma que a corrida foi finalizada?', [
-      { text: 'Não', style: 'cancel' },
-      { text: 'Sim, finalizar', onPress: async () => {
+    Alert.alert(t('motorista.finishRideTitle'), t('motorista.finishRideMsg'), [
+      { text: t('common.no'), style: 'cancel' },
+      { text: t('motorista.yesFinish'), onPress: async () => {
         const corridaInfo = { ...corridaAceitaRef.current };
         await updateDoc(doc(db, 'corridas', corridaAceitaRef.current.id), {
           status: 'finalizada', finalizadaEm: new Date(),
         });
         verificarIndicacao(corridaInfo.passageiroId).catch(() => null);
         pararRastreamento();
+        if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
         corridaAceitaRef.current = null;
         setCorridaAceita(null);
         setMostrarNavegacao(false);
@@ -549,15 +586,24 @@ export default function Motorista() {
   };
 
   const getAvaliacaoLabel = (n: number) => {
-    const labels = ['', 'Muito ruim', 'Ruim', 'Regular', 'Bom', 'Excelente!'];
+    const labels = ['', t('common.rating1'), t('common.rating2'), t('common.rating3'), t('common.rating4'), t('common.rating5')];
     return labels[n] || '';
   };
 
   const abrirNavegacao = (app: string) => {
     if (!corridaAceitaRef.current) return;
-    const lat = navegandoPara === 'passageiro' ? corridaAceitaRef.current.passageiroLat : corridaAceitaRef.current.destLat;
-    const lng = navegandoPara === 'passageiro' ? corridaAceitaRef.current.passageiroLng : corridaAceitaRef.current.destLng;
-    if (!lat || !lng) { Alert.alert('Atenção', 'Localização não disponível'); return; }
+    let lat, lng;
+    if (navegandoPara === 'passageiro') {
+      lat = corridaAceitaRef.current.passageiroLat;
+      lng = corridaAceitaRef.current.passageiroLng;
+    } else if (navegandoPara === 'parada') {
+      lat = corridaAceitaRef.current.paradaLat;
+      lng = corridaAceitaRef.current.paradaLng;
+    } else {
+      lat = corridaAceitaRef.current.destLat;
+      lng = corridaAceitaRef.current.destLng;
+    }
+    if (!lat || !lng) { Alert.alert(t('common.attention'), t('motorista.locationUnavailable')); return; }
     let url = '';
     if (app === 'google') url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
     else if (app === 'waze') url = `waze://?ll=${lat},${lng}&navigate=yes`;
@@ -568,16 +614,9 @@ export default function Motorista() {
     setMostrarNavegacao(false);
   };
 
-  const sair = async () => {
-    const uid = auth.currentUser?.uid;
-    if (uid) await updateDoc(doc(db, 'usuarios', uid), { online: false });
-    await signOut(auth);
-    router.replace('/');
-  };
-
   const enviarDenuncia = async () => {
-    if (!categoriaDenuncia) { Alert.alert('Atenção', 'Selecione uma categoria'); return; }
-    if (!textoDenuncia.trim()) { Alert.alert('Atenção', 'Descreva o ocorrido'); return; }
+    if (!categoriaDenuncia) { Alert.alert(t('common.attention'), t('motorista.errSelectCategory')); return; }
+    if (!textoDenuncia.trim()) { Alert.alert(t('common.attention'), t('motorista.errDescribe')); return; }
     setDenunciando(true);
     try {
       await addDoc(collection(db, 'denuncias'), {
@@ -593,8 +632,8 @@ export default function Motorista() {
       setMostrarDenuncia(false);
       setCategoriaDenuncia('');
       setTextoDenuncia('');
-      Alert.alert('Denúncia enviada', 'Obrigado. Nossa equipe irá analisar.');
-    } catch (e) { Alert.alert('Erro', 'Não foi possível enviar a denúncia'); }
+      Alert.alert(t('motorista.reportSent'), t('motorista.reportSentMsg'));
+    } catch (e) { Alert.alert(t('common.error'), t('motorista.errSendReport')); }
     setDenunciando(false);
   };
 
@@ -610,31 +649,36 @@ export default function Motorista() {
             <TouchableOpacity style={styles.qrFechar} onPress={() => setMostrarQR(false)}>
               <Text style={styles.qrFecharTxt}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.qrTitulo}>Meu QR Code</Text>
+            <Text style={styles.qrTitulo}>{t('motorista.myQrCode')}</Text>
             <Image source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('eluus://cadastro?codigo=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }} style={styles.qrImage} />
             <Text style={styles.qrCodigo}>{codigo}</Text>
-            <Text style={styles.qrInfo}>Mostre para que te adicionem sem digitar o código</Text>
+            <Text style={styles.qrInfo}>{t('motorista.qrInfo')}</Text>
           </View>
         </View>
       </Modal>
 
       {/* Modal Denúncia */}
       <Modal visible={mostrarDenuncia} transparent animationType="slide" onRequestClose={() => setMostrarDenuncia(false)}>
-        <View style={styles.denunciaOverlay}>
+        <KeyboardAvoidingView style={styles.denunciaOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.denunciaCard}>
-            <Text style={styles.denunciaTitulo}>🚨 Fazer Denúncia</Text>
-            <Text style={styles.denunciaLabel}>Categoria</Text>
+            <Text style={styles.denunciaTitulo}>{t('motorista.reportTitle')}</Text>
+            <Text style={styles.denunciaLabel}>{t('motorista.reportCategory')}</Text>
             <View style={styles.categoriasRow}>
-              {['Comportamento', 'Segurança', 'Fraude', 'Outro'].map(c => (
-                <TouchableOpacity key={c} style={[styles.categoriaBtn, categoriaDenuncia === c && styles.categoriaBtnAtivo]} onPress={() => setCategoriaDenuncia(c)}>
-                  <Text style={[styles.categoriaTxt, categoriaDenuncia === c && styles.categoriaTxtAtivo]}>{c}</Text>
+              {[
+                { v: 'Comportamento', l: t('motorista.catBehavior') },
+                { v: 'Segurança', l: t('motorista.catSecurity') },
+                { v: 'Fraude', l: t('motorista.catFraud') },
+                { v: 'Outro', l: t('motorista.catOther') },
+              ].map(c => (
+                <TouchableOpacity key={c.v} style={[styles.categoriaBtn, categoriaDenuncia === c.v && styles.categoriaBtnAtivo]} onPress={() => setCategoriaDenuncia(c.v)}>
+                  <Text style={[styles.categoriaTxt, categoriaDenuncia === c.v && styles.categoriaTxtAtivo]}>{c.l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.denunciaLabel}>Descreva o ocorrido</Text>
+            <Text style={styles.denunciaLabel}>{t('motorista.reportDescribe')}</Text>
             <TextInput
               style={styles.denunciaInput}
-              placeholder="O que aconteceu?"
+              placeholder={t('motorista.reportWhatHappened')}
               placeholderTextColor="#4a5568"
               value={textoDenuncia}
               onChangeText={setTextoDenuncia}
@@ -643,22 +687,22 @@ export default function Motorista() {
               textAlignVertical="top"
             />
             <TouchableOpacity style={styles.denunciaEnviarBtn} onPress={enviarDenuncia} disabled={denunciando}>
-              <Text style={styles.denunciaEnviarTxt}>{denunciando ? 'Enviando...' : 'Enviar denúncia'}</Text>
+              <Text style={styles.denunciaEnviarTxt}>{denunciando ? t('motorista.reportSending') : t('motorista.reportSendBtn')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setMostrarDenuncia(false); setCategoriaDenuncia(''); setTextoDenuncia(''); }}>
-              <Text style={styles.denunciaCancelarTxt}>Cancelar</Text>
+              <Text style={styles.denunciaCancelarTxt}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal avaliação */}
       <Modal visible={mostrarModalAvaliacao} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.avaliacaoCard}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView contentContainerStyle={styles.avaliacaoCard} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.avaliacaoEmoji}>⭐</Text>
-            <Text style={styles.avaliacaoTitulo}>Como foi a corrida?</Text>
-            <Text style={styles.avaliacaoSub}>Avalie {corridaParaAvaliar?.passageiroNome}</Text>
+            <Text style={styles.avaliacaoTitulo}>{t('motorista.ratePassengerTitle')}</Text>
+            <Text style={styles.avaliacaoSub}>{t('motorista.ratePassengerSub', { name: corridaParaAvaliar?.passageiroNome })}</Text>
             <View style={styles.estrelasRow}>
               {[1, 2, 3, 4, 5].map(i => (
                 <TouchableOpacity key={i} onPress={() => setEstrelasAvaliacao(i)}>
@@ -669,7 +713,7 @@ export default function Motorista() {
             <Text style={styles.avaliacaoNota}>{getAvaliacaoLabel(estrelasAvaliacao)}</Text>
             <TextInput
               style={styles.avaliacaoInput}
-              placeholder="Comentário (opcional)..."
+              placeholder={t('motorista.commentPlaceholder')}
               placeholderTextColor="#4a5568"
               value={comentarioAvaliacao}
               onChangeText={setComentarioAvaliacao}
@@ -677,13 +721,13 @@ export default function Motorista() {
               numberOfLines={3}
             />
             <TouchableOpacity style={styles.avaliacaoBtn} onPress={() => salvarAvaliacaoPassageiro(false)}>
-              <Text style={styles.avaliacaoBtnTxt}>Enviar avaliação</Text>
+              <Text style={styles.avaliacaoBtnTxt}>{t('passageiro.sendRating')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => salvarAvaliacaoPassageiro(true)}>
-              <Text style={styles.avaliacaoPularTxt}>Pular</Text>
+              <Text style={styles.avaliacaoPularTxt}>{t('common.skip')}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal solicitação */}
@@ -696,20 +740,20 @@ export default function Motorista() {
               <>
                 <Text style={styles.modalPassageiro}>{solicitacaoAtiva.passageiroNome}</Text>
                 <View style={styles.modalDestBox}>
-                  <Text style={styles.modalDestLabel}>Origem</Text>
-                  <Text style={styles.modalDestino}>{solicitacaoAtiva.passageiroEndereco || 'Localização atual'}</Text>
+                  <Text style={styles.modalDestLabel}>{t('motorista.origin')}</Text>
+                  <Text style={styles.modalDestino}>{solicitacaoAtiva.passageiroEndereco || t('motorista.currentLocation')}</Text>
                 </View>
                 <View style={styles.modalDestBox}>
-                  <Text style={styles.modalDestLabel}>Destino</Text>
+                  <Text style={styles.modalDestLabel}>{t('motorista.destination')}</Text>
                   <Text style={styles.modalDestino}>{solicitacaoAtiva.destino}</Text>
                 </View>
                 <View style={styles.modalInfoRow}>
                   <View style={styles.modalInfoItem}>
-                    <Text style={styles.modalInfoLabel}>Distância</Text>
+                    <Text style={styles.modalInfoLabel}>{t('motorista.distance')}</Text>
                     <Text style={styles.modalInfoValor}>{solicitacaoAtiva.distancia} km</Text>
                   </View>
                   <View style={styles.modalInfoItem}>
-                    <Text style={styles.modalInfoLabel}>Valor</Text>
+                    <Text style={styles.modalInfoLabel}>{t('motorista.value')}</Text>
                     <Text style={styles.modalInfoPreco}>R$ {solicitacaoAtiva.valor}</Text>
                   </View>
                 </View>
@@ -731,15 +775,31 @@ export default function Motorista() {
       <Modal visible={mostrarNavegacao} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>{navegandoPara === 'passageiro' ? '🧍' : '📍'}</Text>
-            <Text style={styles.modalTitulo}>{navegandoPara === 'passageiro' ? 'Buscar Passageiro' : 'Ir ao Destino'}</Text>
+            <Text style={styles.modalEmoji}>{navegandoPara === 'passageiro' ? '🧍' : navegandoPara === 'parada' ? '🔶' : '📍'}</Text>
+            <Text style={styles.modalTitulo}>
+              {navegandoPara === 'passageiro' ? t('motorista.fetchPassenger') : navegandoPara === 'parada' ? t('motorista.goToStop') : t('motorista.goToDest')}
+            </Text>
             {corridaAceita && (
               <>
                 <View style={styles.modalDestBox}>
-                  <Text style={styles.modalDestLabel}>{navegandoPara === 'passageiro' ? 'Passageiro' : 'Destino'}</Text>
-                  <Text style={styles.modalDestino}>{navegandoPara === 'passageiro' ? corridaAceita.passageiroNome : corridaAceita.destino}</Text>
+                  <Text style={styles.modalDestLabel}>
+                    {navegandoPara === 'passageiro' ? t('motorista.navPassengerLabel') : navegandoPara === 'parada' ? t('motorista.navStopLabel') : t('motorista.navDestLabel')}
+                  </Text>
+                  <Text style={styles.modalDestino}>
+                    {navegandoPara === 'passageiro'
+                      ? corridaAceita.passageiroNome
+                      : navegandoPara === 'parada'
+                      ? corridaAceita.paradaDescricao
+                      : corridaAceita.destino}
+                  </Text>
                 </View>
-                <Text style={styles.navSubtitulo}>Abrir com:</Text>
+                {corridaAceita.paradaDescricao && (
+                  <View style={styles.modalDestBox}>
+                    <Text style={styles.modalDestLabel}>{t('motorista.navStop2')}</Text>
+                    <Text style={styles.modalDestino}>{corridaAceita.paradaDescricao}</Text>
+                  </View>
+                )}
+                <Text style={styles.navSubtitulo}>{t('motorista.openWith')}</Text>
                 <View style={styles.navBtns}>
                   <TouchableOpacity style={styles.navBtn} onPress={() => abrirNavegacao('google')}>
                     <Text style={styles.navBtnEmoji}>🗺️</Text>
@@ -757,12 +817,25 @@ export default function Motorista() {
                   )}
                 </View>
                 {navegandoPara === 'passageiro' && (
+                  <TouchableOpacity style={styles.proximoBtn} onPress={() => {
+                    if (corridaAceita?.paradaDescricao) {
+                      setNavegandoPara('parada');
+                    } else {
+                      setNavegandoPara('destino');
+                    }
+                  }}>
+                    <Text style={styles.proximoBtnTxt}>
+                      {corridaAceita?.paradaDescricao ? t('motorista.passengerFetchedStop') : t('motorista.passengerFetched')}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {navegandoPara === 'parada' && (
                   <TouchableOpacity style={styles.proximoBtn} onPress={() => setNavegandoPara('destino')}>
-                    <Text style={styles.proximoBtnTxt}>Já busquei o passageiro → Ir ao destino</Text>
+                    <Text style={styles.proximoBtnTxt}>{t('motorista.stopPassed')}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.fecharNavBtn} onPress={() => setMostrarNavegacao(false)}>
-                  <Text style={styles.fecharNavTxt}>Fechar</Text>
+                  <Text style={styles.fecharNavTxt}>{t('common.close')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -775,21 +848,28 @@ export default function Motorista() {
         <KeyboardAvoidingView style={styles.chatOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.chatCard}>
             <View style={styles.chatHeader}>
-              <Text style={styles.chatTitulo}>💬 Chat — {corridaAceita?.passageiroNome}</Text>
+              <Text style={styles.chatTitulo}>{t('motorista.chatWith', { name: corridaAceita?.passageiroNome })}</Text>
               <TouchableOpacity onPress={fecharChat}>
                 <Text style={styles.chatFechar}>✕</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.chatMensagens} showsVerticalScrollIndicator={false}>
-              {mensagens.length === 0 && <Text style={styles.chatVazio}>Nenhuma mensagem ainda</Text>}
+            <ScrollView
+              ref={chatScrollRef}
+              style={styles.chatMensagens}
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}>
+              {mensagens.length === 0 && <Text style={styles.chatVazio}>{t('motorista.noMessages')}</Text>}
               {mensagens.map((m: any) => (
                 <View key={m.id} style={[styles.msgBubble, m.remetente === 'motorista' ? styles.msgMinha : styles.msgDele]}>
                   <Text style={styles.msgTxt}>{m.texto}</Text>
+                  {m.remetente === 'motorista' && (
+                    <Text style={styles.msgRecibo}>{m.lida ? '✓✓' : '✓'}</Text>
+                  )}
                 </View>
               ))}
             </ScrollView>
             <View style={styles.chatInput}>
-              <TextInput style={styles.chatTextInput} placeholder="Digite uma mensagem..." placeholderTextColor="#4a5568" value={novaMensagem} onChangeText={setNovaMensagem} />
+              <TextInput style={styles.chatTextInput} placeholder={t('motorista.messagePlaceholder')} placeholderTextColor="#4a5568" value={novaMensagem} onChangeText={setNovaMensagem} />
               <TouchableOpacity style={styles.chatEnviar} onPress={enviarMensagem}>
                 <Text style={styles.chatEnviarTxt}>➤</Text>
               </TouchableOpacity>
@@ -804,7 +884,7 @@ export default function Motorista() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>eluus</Text>
-            <Text style={styles.bemvindo}>Olá, {primeiroNome} 👋</Text>
+            <Text style={styles.bemvindo}>{t('motorista.hello')}, {primeiroNome} 👋</Text>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity onPress={() => router.push('/relatorio')} style={styles.headerBtn}>
@@ -822,9 +902,6 @@ export default function Motorista() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/perfil')} style={styles.headerBtn}>
               <Text style={styles.headerBtnTxt}>👤</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={sair} style={styles.headerBtn}>
-              <Text style={styles.headerBtnTxt}>Sair</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -847,15 +924,18 @@ export default function Motorista() {
             <View style={styles.corridaAtivaTop}>
               <Text style={styles.corridaAtivaEmoji}>🧭</Text>
               <View style={styles.corridaAtivaInfo}>
-                <Text style={styles.corridaAtivaTitulo}>Corrida em andamento</Text>
+                <Text style={styles.corridaAtivaTitulo}>{t('motorista.rideInProgress')}</Text>
                 <Text style={styles.corridaAtivaPassageiro}>👤 {corridaAceita.passageiroNome}</Text>
                 <Text style={styles.corridaAtivaDestino}>📍 {corridaAceita.destino}</Text>
+                {corridaAceita.paradaDescricao && (
+                  <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAceita.paradaDescricao}</Text>
+                )}
                 <Text style={styles.corridaAtivaValor}>💰 R$ {corridaAceita.valor} · {corridaAceita.distancia} km</Text>
               </View>
             </View>
             <View style={styles.corridaAtivaBtns}>
               <TouchableOpacity style={styles.corridaBtnNav} onPress={() => setMostrarNavegacao(true)}>
-                <Text style={styles.corridaBtnTxt}>🗺️ Navegar</Text>
+                <Text style={styles.corridaBtnTxt}>{t('motorista.navigate')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.corridaBtnChat} onPress={abrirChat}>
                 <Text style={styles.corridaBtnTxt}>💬 Chat{msgNaoLidas > 0 ? ` (${msgNaoLidas})` : ''}</Text>
@@ -863,15 +943,15 @@ export default function Motorista() {
             </View>
             <View style={styles.corridaAtivaBtns}>
               <TouchableOpacity style={styles.corridaBtnChegou} onPress={() => avisarChegada(corridaAceita.id)}>
-                <Text style={styles.corridaBtnTxt}>📍 Avisar que cheguei</Text>
+                <Text style={styles.corridaBtnTxt}>{t('motorista.arrivedBtn')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.corridaAtivaBtns}>
               <TouchableOpacity style={styles.corridaBtnCancelar} onPress={cancelarCorrida}>
-                <Text style={styles.corridaBtnCancelarTxt}>✕ Cancelar</Text>
+                <Text style={styles.corridaBtnCancelarTxt}>{t('motorista.cancelRide')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.corridaBtnFinalizar} onPress={encerrarCorrida}>
-                <Text style={styles.corridaBtnFinalizarTxt}>✓ Finalizar</Text>
+                <Text style={styles.corridaBtnFinalizarTxt}>{t('motorista.finishRide')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -881,15 +961,15 @@ export default function Motorista() {
         <View style={styles.stats}>
           <View style={styles.statCard}>
             <Text style={styles.statValor}>{corridas}</Text>
-            <Text style={styles.statLabel}>Corridas</Text>
+            <Text style={styles.statLabel}>{t('motorista.rides')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValor}>R$ {precoPorKm.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>Por km</Text>
+            <Text style={styles.statLabel}>{t('motorista.perKm')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statValor}>⭐ {avaliacaoMedia.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>Avaliação</Text>
+            <Text style={styles.statLabel}>{t('motorista.rating')}</Text>
           </View>
         </View>
 
@@ -903,13 +983,13 @@ export default function Motorista() {
           onPress={() => router.push('/comprar')}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.creditosTitulo}>🎟️ Créditos de corridas</Text>
+            <Text style={styles.creditosTitulo}>{t('motorista.credits')}</Text>
             <Text style={styles.creditosSub}>
               {creditos === 0
-                ? 'Sem créditos — toque para comprar'
+                ? t('motorista.creditsZero')
                 : creditos <= 10
-                ? `${creditos} corrida${creditos !== 1 ? 's' : ''} restante${creditos !== 1 ? 's' : ''} — compre mais`
-                : `${creditos} corridas disponíveis`}
+                ? t('motorista.ridesLow', { count: creditos, plural: creditos !== 1 ? 's' : '' })
+                : t('motorista.ridesAvailable', { count: creditos })}
             </Text>
           </View>
           <Text style={[styles.creditosNum, { color: creditos === 0 ? '#ef4444' : creditos <= 10 ? '#f59e0b' : '#22c55e' }]}>
@@ -919,7 +999,7 @@ export default function Motorista() {
 
         {/* Preço por km */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Meu preço por km</Text>
+          <Text style={styles.secaoTitulo}>{t('motorista.pricePerKm')}</Text>
           <View style={styles.precoCard}>
             <TouchableOpacity style={styles.precoBtn} onPress={async () => {
               const novo = parseFloat(Math.max(1, precoPorKm - 0.1).toFixed(2));
@@ -935,15 +1015,15 @@ export default function Motorista() {
               <Text style={styles.precoBtnTxt}>+</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.precoInfo}>Este valor será usado para calcular o preço das corridas</Text>
+          <Text style={styles.precoInfo}>{t('motorista.priceInfo')}</Text>
         </View>
 
         {/* Cobrar deslocamento */}
         <View style={styles.secao}>
           <View style={styles.deslocamentoCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.deslocamentoTitulo}>Cobrar deslocamento até o passageiro</Text>
-              <Text style={styles.deslocamentoSub}>A km de ida até o passageiro entra no valor da corrida</Text>
+              <Text style={styles.deslocamentoTitulo}>{t('motorista.cobrarDesl')}</Text>
+              <Text style={styles.deslocamentoSub}>{t('motorista.cobrarDeslSub')}</Text>
             </View>
             <Switch
               value={cobrarDeslocamento}
@@ -960,16 +1040,16 @@ export default function Motorista() {
 
         {/* Código */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Meu código</Text>
+          <Text style={styles.secaoTitulo}>{t('motorista.myCode')}</Text>
           <View style={styles.codigoCard}>
             <Text style={styles.codigoTxt}>{codigo}</Text>
-            <Text style={styles.codigoSub}>Compartilhe este código com seus passageiros</Text>
+            <Text style={styles.codigoSub}>{t('motorista.shareCode')}</Text>
             <View style={styles.codigoBtnsRow}>
               <TouchableOpacity style={styles.codigoAcaoBtn} onPress={() => setMostrarQR(true)}>
-                <Text style={styles.codigoAcaoTxt}>📱 Ver QR Code</Text>
+                <Text style={styles.codigoAcaoTxt}>{t('motorista.viewQrCode')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.codigoAcaoBtn} onPress={() => setMostrarDenuncia(true)}>
-                <Text style={[styles.codigoAcaoTxt, { color: '#ef4444' }]}>🚨 Denunciar</Text>
+                <Text style={[styles.codigoAcaoTxt, { color: '#ef4444' }]}>{t('motorista.reportBtn')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -977,12 +1057,12 @@ export default function Motorista() {
 
         {/* Solicitações */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>Solicitações {solicitacoes.length > 0 ? `(${solicitacoes.length})` : ''}</Text>
+          <Text style={styles.secaoTitulo}>{t('motorista.myRequests')} {solicitacoes.length > 0 ? `(${solicitacoes.length})` : ''}</Text>
           {solicitacoes.length === 0 ? (
             <View style={styles.vazio}>
               <Text style={styles.vazioemoji}>🕐</Text>
-              <Text style={styles.vaziotxt}>Nenhuma solicitação no momento</Text>
-              <Text style={styles.vaziossub}>Fique online para receber corridas</Text>
+              <Text style={styles.vaziotxt}>{t('motorista.noRequests')}</Text>
+              <Text style={styles.vaziossub}>{t('motorista.noRequestsSub')}</Text>
             </View>
           ) : (
             solicitacoes.map((s: any) => (
@@ -999,7 +1079,7 @@ export default function Motorista() {
           )}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
     </View>
   );
@@ -1101,6 +1181,7 @@ const styles = StyleSheet.create({
   msgMinha: { backgroundColor: '#1a2a4a', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
   msgDele: { backgroundColor: '#1a1f2e', alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
   msgTxt: { color: '#fff', fontSize: 14 },
+  msgRecibo: { color: '#4a9eff', fontSize: 10, alignSelf: 'flex-end', marginTop: 2 },
   chatInput: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   chatTextInput: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 14, padding: 14, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2a3044' },
   chatEnviar: { backgroundColor: '#4a9eff', width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
