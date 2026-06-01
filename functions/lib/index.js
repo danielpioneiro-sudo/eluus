@@ -47,6 +47,7 @@ const mpAccessToken = (0, params_1.defineSecret)('MP_ACCESS_TOKEN');
 const paypalClientId = (0, params_1.defineSecret)('PAYPAL_CLIENT_ID');
 const paypalClientSecret = (0, params_1.defineSecret)('PAYPAL_CLIENT_SECRET');
 const paypalWebhookId = (0, params_1.defineSecret)('PAYPAL_WEBHOOK_ID');
+const appleSharedSecret = (0, params_1.defineSecret)('APPLE_SHARED_SECRET');
 const PAYPAL_BASE = 'https://api-m.paypal.com';
 const PACOTES = {
     '30': { corridas: 30, valor: 29.0 },
@@ -214,7 +215,7 @@ exports.adicionarCreditosAdmin = (0, https_1.onCall)(async (request) => {
     return { success: true };
 });
 // ── Apple In-App Purchase: verifica receipt e credita corridas ──
-exports.verifyAppleReceipt = (0, https_1.onCall)(async (request) => {
+exports.verifyAppleReceipt = (0, https_1.onCall)({ secrets: [appleSharedSecret], enforceAppCheck: false }, async (request) => {
     var _a;
     if (!request.auth)
         throw new https_1.HttpsError('unauthenticated', 'Não autenticado');
@@ -230,29 +231,36 @@ exports.verifyAppleReceipt = (0, https_1.onCall)(async (request) => {
     const corridas = PRODUTO_CORRIDAS[productId];
     if (!corridas)
         throw new https_1.HttpsError('invalid-argument', `Produto desconhecido: ${productId}`);
-    // Validar receipt com Apple (tentar produção primeiro, depois sandbox)
+    const secret = appleSharedSecret.value().trim();
+    const body = { 'receipt-data': receiptData };
+    // Shared secret é obrigatório só para assinaturas; para consumíveis é opcional.
+    // Só inclui se for um hex válido (32+ chars) para evitar erros com valores placeholder.
+    if (/^[0-9a-f]{32,}$/i.test(secret))
+        body.password = secret;
+    // Tenta produção primeiro; se retornar 21007 (sandbox receipt), tenta sandbox
     let appleData = null;
     for (const url of [
         'https://buy.itunes.apple.com/verifyReceipt',
         'https://sandbox.itunes.apple.com/verifyReceipt',
     ]) {
-        const res = await axios_1.default.post(url, { 'receipt-data': receiptData, password: process.env.APPLE_SHARED_SECRET || '' });
-        if (res.data.status === 0 || res.data.status === 21007) {
+        const res = await axios_1.default.post(url, body);
+        if (res.data.status === 0) {
             appleData = res.data;
             break;
         }
+        if (res.data.status === 21007)
+            continue; // receipt de sandbox, tenta próxima URL
     }
     if (!appleData || appleData.status !== 0) {
         throw new https_1.HttpsError('invalid-argument', `Apple receipt inválido. Status: ${appleData === null || appleData === void 0 ? void 0 : appleData.status}`);
     }
-    // Confirma que o produto consta no receipt
     const inApp = ((_a = appleData.receipt) === null || _a === void 0 ? void 0 : _a.in_app) || appleData.latest_receipt_info || [];
     const purchase = inApp.find((p) => p.product_id === productId);
     if (!purchase)
         throw new https_1.HttpsError('invalid-argument', 'Produto não encontrado no receipt');
     const transactionId = purchase.transaction_id;
     const uid = request.auth.uid;
-    // Idempotência: verifica se já foi creditado
+    // Idempotência: evita creditar duas vezes a mesma transação
     const existente = await db.collection('pagamentos')
         .where('transactionId', '==', transactionId)
         .limit(1).get();

@@ -22,6 +22,7 @@ if (typeof crypto === 'undefined' || typeof (crypto as any).randomUUID === 'unde
 
 import { initializeApp } from "firebase/app";
 import { initializeAppCheck, CustomProvider } from 'firebase/app-check';
+// @ts-expect-error - getReactNativePersistence is available in the RN bundle but not in CJS types
 import { getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from 'firebase/functions';

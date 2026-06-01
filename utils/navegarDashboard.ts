@@ -8,8 +8,8 @@ export async function navegarDashboard(uid: string, router: Router): Promise<voi
     console.log('[navegarDashboard] consultando tipo do usuário:', uid);
     const userDoc = await getDoc(doc(db, 'usuarios', uid));
     if (!userDoc.exists()) {
-      console.warn('[navegarDashboard] documento não encontrado, redirecionando para /');
-      router.replace('/');
+      console.warn('[navegarDashboard] documento não encontrado, redirecionando para completar-cadastro');
+      router.replace('/completar-cadastro');
       return;
     }
     const data = userDoc.data();
@@ -26,6 +26,6 @@ export async function navegarDashboard(uid: string, router: Router): Promise<voi
     }
   } catch (e) {
     console.error('[navegarDashboard] erro:', e);
-    router.replace('/');
+    router.replace('/login');
   }
 }

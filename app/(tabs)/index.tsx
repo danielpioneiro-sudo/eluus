@@ -45,18 +45,22 @@ export default function HomeScreen() {
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.btnPassageiro} onPress={() => router.push('/cadastro')}>
           <Text style={styles.btnIcon}>🧍</Text>
-          <Text style={styles.btnTitle}>{t('index.passenger')}</Text>
-          <Text style={styles.btnSub}>{t('index.passengerSub')}</Text>
+          <View>
+            <Text style={styles.btnTitle}>{t('index.passenger')}</Text>
+            <Text style={styles.btnSub}>{t('index.passengerSub')}</Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.btnMotorista} onPress={() => router.push('/cadastro')}>
           <Text style={styles.btnIcon}>🚗</Text>
-          <Text style={styles.btnTitle}>{t('index.driver')}</Text>
-          <Text style={styles.btnSub}>{t('index.driverSub')}</Text>
+          <View>
+            <Text style={styles.btnTitle}>{t('index.driver')}</Text>
+            <Text style={styles.btnSub}>{t('index.driverSub')}</Text>
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/login')}>
-          <Text style={styles.link}>{t('index.login')}</Text>
+        <TouchableOpacity style={styles.loginBtn} onPress={() => router.push('/login')}>
+          <Text style={styles.loginBtnTxt}>{t('index.login')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -88,16 +92,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 32,
-    paddingTop: 100,
+    paddingTop: 60,
     paddingBottom: 48,
   },
   header: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
   },
   logo: {
-    width: 220,
-    height: 160,
+    width: 260,
+    height: 190,
   },
   loading: {
     flex: 1,
@@ -107,42 +113,61 @@ const styles = StyleSheet.create({
   },
   buttons: {
     width: '100%',
-    gap: 16,
+    gap: 10,
+    marginBottom: 24,
   },
   btnPassageiro: {
     backgroundColor: '#1a1f2e',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#4a9eff',
   },
   btnMotorista: {
     backgroundColor: '#1a1f2e',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#22c55e',
   },
   btnIcon: {
-    fontSize: 40,
+    fontSize: 26,
   },
   btnTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   btnSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748b',
   },
   link: {
     color: '#4a9eff',
     textAlign: 'center',
     fontSize: 15,
+    marginTop: 4,
+  },
+  loginBtn: {
+    borderWidth: 1,
+    borderColor: '#4a9eff',
+    borderRadius: 16,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  loginBtnTxt: {
+    color: '#4a9eff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   footerWrap: {
     alignItems: 'center',

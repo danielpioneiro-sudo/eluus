@@ -13,12 +13,13 @@
       "bundleIdentifier": "app.eluus.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": false,
-      "buildNumber": "5",
+      "buildNumber": "8",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["waze", "comgooglemaps", "googlemaps"]
       }
     },
     "android": {
@@ -34,7 +35,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "app.eluus.app",
-      "versionCode": 3
+      "versionCode": 7
     },
     "web": {
       "output": "static",

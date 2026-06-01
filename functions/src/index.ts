@@ -10,6 +10,7 @@ const mpAccessToken = defineSecret('MP_ACCESS_TOKEN');
 const paypalClientId = defineSecret('PAYPAL_CLIENT_ID');
 const paypalClientSecret = defineSecret('PAYPAL_CLIENT_SECRET');
 const paypalWebhookId = defineSecret('PAYPAL_WEBHOOK_ID');
+const appleSharedSecret = defineSecret('APPLE_SHARED_SECRET');
 
 const PAYPAL_BASE = 'https://api-m.paypal.com';
 
@@ -203,65 +204,71 @@ export const adicionarCreditosAdmin = onCall(async (request) => {
 });
 
 // ── Apple In-App Purchase: verifica receipt e credita corridas ──
-export const verifyAppleReceipt = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'Não autenticado');
-  const { receiptData, productId } = request.data as { receiptData: string; productId: string };
-  if (!receiptData || !productId) throw new HttpsError('invalid-argument', 'Dados inválidos');
+export const verifyAppleReceipt = onCall(
+  { secrets: [appleSharedSecret], enforceAppCheck: false },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Não autenticado');
+    const { receiptData, productId } = request.data as { receiptData: string; productId: string };
+    if (!receiptData || !productId) throw new HttpsError('invalid-argument', 'Dados inválidos');
 
-  const PRODUTO_CORRIDAS: Record<string, number> = {
-    'com.eluus.corridas30': 30,
-    'com.eluus.corridas50': 50,
-    'com.eluus.corridas100': 100,
-    'com.eluus.corridas200': 200,
-  };
-  const corridas = PRODUTO_CORRIDAS[productId];
-  if (!corridas) throw new HttpsError('invalid-argument', `Produto desconhecido: ${productId}`);
+    const PRODUTO_CORRIDAS: Record<string, number> = {
+      'com.eluus.corridas30': 30,
+      'com.eluus.corridas50': 50,
+      'com.eluus.corridas100': 100,
+      'com.eluus.corridas200': 200,
+    };
+    const corridas = PRODUTO_CORRIDAS[productId];
+    if (!corridas) throw new HttpsError('invalid-argument', `Produto desconhecido: ${productId}`);
 
-  // Validar receipt com Apple (tentar produção primeiro, depois sandbox)
-  let appleData: any = null;
-  for (const url of [
-    'https://buy.itunes.apple.com/verifyReceipt',
-    'https://sandbox.itunes.apple.com/verifyReceipt',
-  ]) {
-    const res = await axios.post(url, { 'receipt-data': receiptData, password: process.env.APPLE_SHARED_SECRET || '' });
-    if (res.data.status === 0 || res.data.status === 21007) {
-      appleData = res.data;
-      break;
+    const secret = appleSharedSecret.value().trim();
+    const body: Record<string, string> = { 'receipt-data': receiptData };
+    // Shared secret é obrigatório só para assinaturas; para consumíveis é opcional.
+    // Só inclui se for um hex válido (32+ chars) para evitar erros com valores placeholder.
+    if (/^[0-9a-f]{32,}$/i.test(secret)) body.password = secret;
+
+    // Tenta produção primeiro; se retornar 21007 (sandbox receipt), tenta sandbox
+    let appleData: any = null;
+    for (const url of [
+      'https://buy.itunes.apple.com/verifyReceipt',
+      'https://sandbox.itunes.apple.com/verifyReceipt',
+    ]) {
+      const res = await axios.post(url, body);
+      if (res.data.status === 0) { appleData = res.data; break; }
+      if (res.data.status === 21007) continue; // receipt de sandbox, tenta próxima URL
     }
+    if (!appleData || appleData.status !== 0) {
+      throw new HttpsError('invalid-argument', `Apple receipt inválido. Status: ${appleData?.status}`);
+    }
+
+    const inApp: any[] = appleData.receipt?.in_app || appleData.latest_receipt_info || [];
+    const purchase = inApp.find((p: any) => p.product_id === productId);
+    if (!purchase) throw new HttpsError('invalid-argument', 'Produto não encontrado no receipt');
+
+    const transactionId = purchase.transaction_id;
+    const uid = request.auth.uid;
+
+    // Idempotência: evita creditar duas vezes a mesma transação
+    const existente = await db.collection('pagamentos')
+      .where('transactionId', '==', transactionId)
+      .limit(1).get();
+    if (!existente.empty) return { success: true, alreadyCredited: true };
+
+    const batch = db.batch();
+    const pedidoRef = db.collection('pagamentos').doc();
+    batch.set(pedidoRef, {
+      uid, productId, corridas, transactionId,
+      metodo: 'apple_iap',
+      status: 'pago',
+      pagoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    batch.update(db.collection('usuarios').doc(uid), {
+      creditos: admin.firestore.FieldValue.increment(corridas),
+    });
+    await batch.commit();
+
+    return { success: true, corridas };
   }
-  if (!appleData || appleData.status !== 0) {
-    throw new HttpsError('invalid-argument', `Apple receipt inválido. Status: ${appleData?.status}`);
-  }
-
-  // Confirma que o produto consta no receipt
-  const inApp: any[] = appleData.receipt?.in_app || appleData.latest_receipt_info || [];
-  const purchase = inApp.find((p: any) => p.product_id === productId);
-  if (!purchase) throw new HttpsError('invalid-argument', 'Produto não encontrado no receipt');
-
-  const transactionId = purchase.transaction_id;
-  const uid = request.auth.uid;
-
-  // Idempotência: verifica se já foi creditado
-  const existente = await db.collection('pagamentos')
-    .where('transactionId', '==', transactionId)
-    .limit(1).get();
-  if (!existente.empty) return { success: true, alreadyCredited: true };
-
-  const batch = db.batch();
-  const pedidoRef = db.collection('pagamentos').doc();
-  batch.set(pedidoRef, {
-    uid, productId, corridas, transactionId,
-    metodo: 'apple_iap',
-    status: 'pago',
-    pagoEm: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  batch.update(db.collection('usuarios').doc(uid), {
-    creditos: admin.firestore.FieldValue.increment(corridas),
-  });
-  await batch.commit();
-
-  return { success: true, corridas };
-});
+);
 
 // ── PayPal: cria pedido e retorna URL de aprovação ────────────
 export const criarPedidoPayPal = onCall(

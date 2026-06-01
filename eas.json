@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 16.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -20,6 +20,12 @@
         "simulator": false
       }
     },
+    "adhoc": {
+      "ios": {
+        "distribution": "internal",
+        "credentialsSource": "remote"
+      }
+    },
     "production": {
       "android": {
         "buildType": "app-bundle",
@@ -33,9 +39,12 @@
   },
   "submit": {
     "production": {
+      "ios": {
+        "ascAppId": "6769097819"
+      },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
-        "track": "internal"
+        "track": "alpha"
       }
     }
   }
