@@ -457,7 +457,10 @@
     "errPix": "Error al generar PIX",
     "errPayPal": "Error de PayPal",
     "errPagamento": "Error en el pago",
-    "errPayment": "No se pudo iniciar el pago"
+    "errPayment": "No se pudo iniciar el pago",
+    "errProdutoNaoCarregado": "Productos aún no cargados. Espera un momento e intenta de nuevo.",
+    "errProdutosIndisponiveis": "Productos no disponibles en este momento. Verifica tu conexión y reabre la pantalla.",
+    "carregandoProdutos": "Cargando opciones de compra…"
   },
   "admin": {
     "title": "Administración",

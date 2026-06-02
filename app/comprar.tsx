@@ -71,6 +71,8 @@ export default function Comprar() {
 
   // iOS — produtos da App Store
   const [iapProdutos, setIapProdutos] = useState<ProductIOS[]>([]);
+  const [iapPronto, setIapPronto] = useState(false);
+  const [iapErro, setIapErro] = useState(false);
 
   const brasil = isBrazil();
 
@@ -94,8 +96,21 @@ export default function Comprar() {
     const setup = async () => {
       try {
         await initConnection();
-        const products = await fetchProducts({ skus: IAP_SKUS, type: 'in-app' });
-        setIapProdutos(products as ProductIOS[]);
+
+        let products: ProductIOS[] = [];
+        for (let tentativa = 0; tentativa < 3; tentativa++) {
+          const resultado = await fetchProducts({ skus: IAP_SKUS, type: 'in-app' });
+          products = resultado as ProductIOS[];
+          if (products.length > 0) break;
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        if (products.length === 0) {
+          setIapErro(true);
+        } else {
+          setIapProdutos(products);
+        }
+        setIapPronto(true);
 
         purchaseListener = purchaseUpdatedListener(async (purchase: Purchase) => {
           try {
@@ -120,6 +135,8 @@ export default function Comprar() {
         });
       } catch (e) {
         console.error('[IAP] initConnection error:', e);
+        setIapErro(true);
+        setIapPronto(true);
       }
     };
 
@@ -142,6 +159,11 @@ export default function Comprar() {
 
   // ── iOS: StoreKit IAP ─────────────────────────────────────
   const comprarIAP = async (sku: string) => {
+    const produto = iapProdutos.find(p => p.id === sku);
+    if (!produto) {
+      Alert.alert(t('comprar.errPagamento'), t('comprar.errProdutoNaoCarregado'));
+      return;
+    }
     setCarregando(sku);
     setPago(false);
     try {
@@ -344,18 +366,32 @@ export default function Comprar() {
       {/* Pacotes */}
       <Text style={styles.secaoTitulo}>{t('comprar.choosePlan')}</Text>
 
+      {Platform.OS === 'ios' && !iapPronto && (
+        <View style={styles.iapLoadingCard}>
+          <ActivityIndicator color="#4a9eff" size="small" />
+          <Text style={styles.iapLoadingTxt}>{t('comprar.carregandoProdutos')}</Text>
+        </View>
+      )}
+
+      {Platform.OS === 'ios' && iapPronto && iapErro && (
+        <View style={styles.iapErroCard}>
+          <Text style={styles.iapErroTxt}>{t('comprar.errProdutosIndisponiveis')}</Text>
+        </View>
+      )}
+
       {PACOTES_BASE.map(p => {
         const loadingKey = Platform.OS === 'ios' ? p.sku : p.id;
         const isLoading = carregando === loadingKey || carregando === `paypal_${p.id}`;
         const descricao = t(`comprar.${p.descricaoKey}`);
         const precoExibido = Platform.OS === 'ios' ? (getPrecoIos(p.sku) || p.valor) : p.valor;
+        const iapBloqueado = Platform.OS === 'ios' && (!iapPronto || iapErro);
 
         return (
           <TouchableOpacity
             key={p.id}
-            style={[styles.pacoteCard, p.destaque && styles.pacoteDestaque]}
+            style={[styles.pacoteCard, p.destaque && styles.pacoteDestaque, iapBloqueado && styles.pacoteDesabilitado]}
             onPress={() => handleComprar(p)}
-            disabled={!!carregando}
+            disabled={!!carregando || iapBloqueado}
           >
             {p.destaque && (
               <View style={styles.destaqueTag}>
@@ -422,6 +458,11 @@ const styles = StyleSheet.create({
   pacoteValor: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   pacoteValorDestaque: { color: '#4a9eff' },
   pacoteSeta: { color: '#4a5568', fontSize: 15 },
+  iapLoadingCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 4, marginBottom: 4 },
+  iapLoadingTxt: { color: '#64748b', fontSize: 13 },
+  iapErroCard: { backgroundColor: '#1a0f0f', borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#ef444440' },
+  iapErroTxt: { color: '#ef4444', fontSize: 13, textAlign: 'center' },
+  pacoteDesabilitado: { opacity: 0.45 },
   indicacaoCard: { backgroundColor: '#0f2a1a', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 8, borderWidth: 1, borderColor: '#22c55e' },
   indicacaoEmoji: { fontSize: 24 },
   indicacaoTxt: { flex: 1, color: '#94a3b8', fontSize: 13, lineHeight: 20 },

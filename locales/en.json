@@ -457,7 +457,10 @@
     "errPix": "Error generating PIX",
     "errPayPal": "PayPal error",
     "errPagamento": "Payment error",
-    "errPayment": "Could not start payment"
+    "errPayment": "Could not start payment",
+    "errProdutoNaoCarregado": "Products not loaded yet. Please wait a moment and try again.",
+    "errProdutosIndisponiveis": "Products unavailable at the moment. Check your connection and reopen the screen.",
+    "carregandoProdutos": "Loading purchase options…"
   },
   "admin": {
     "title": "Administration",

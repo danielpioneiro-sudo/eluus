@@ -1,0 +1,118 @@
+{
+  "identifier" : "EluusProducts",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "groupNumber" : 1,
+      "internalID" : "1001",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "30 corridas no app Eluus",
+          "displayName" : "30 Corridas",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.eluus.corridas30",
+      "referenceName" : "30 Corridas",
+      "subscriptionGroupID" : null,
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "7.99",
+      "familyShareable" : false,
+      "groupNumber" : 2,
+      "internalID" : "1002",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "50 corridas no app Eluus",
+          "displayName" : "50 Corridas",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.eluus.corridas50",
+      "referenceName" : "50 Corridas",
+      "subscriptionGroupID" : null,
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "12.99",
+      "familyShareable" : false,
+      "groupNumber" : 3,
+      "internalID" : "1003",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "100 corridas no app Eluus",
+          "displayName" : "100 Corridas",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.eluus.corridas100",
+      "referenceName" : "100 Corridas",
+      "subscriptionGroupID" : null,
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "21.99",
+      "familyShareable" : false,
+      "groupNumber" : 4,
+      "internalID" : "1004",
+      "introductoryOffer" : null,
+      "localizations" : [
+        {
+          "description" : "200 corridas no app Eluus",
+          "displayName" : "200 Corridas",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.eluus.corridas200",
+      "referenceName" : "200 Corridas",
+      "subscriptionGroupID" : null,
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "1000000",
+    "_developerTeamID" : "",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
