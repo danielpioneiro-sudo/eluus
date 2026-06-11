@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eluus — Corridas com quem você confia</title>
-  <meta name="description" content="Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma." />
+  <meta name="description" content="Eluus é o app de transporte privado entre pessoas que se conhecem. Corridas com quem você confia, sem taxas de plataforma." />
   <meta property="og:title" content="Eluus — Corridas com quem você confia" />
-  <meta property="og:description" content="App de transporte privado por convite entre pessoas que se conhecem." />
+  <meta property="og:description" content="App de transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="images/icon.png" />
   <link rel="icon" type="image/png" href="images/icon.png" />
@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -271,9 +272,20 @@
       background: var(--card); border: 1px solid var(--border);
       border-radius: 14px; padding: 14px 24px; text-decoration: none;
       min-width: 200px; transition: border-color .2s, transform .15s;
+      position: relative;
     }
     .store-btn:hover { border-color: rgba(249,115,22,.4); transform: translateY(-2px); }
-    .store-icon { font-size: 28px; line-height: 1; }
+    .store-btn-soon { opacity: .45; cursor: not-allowed; pointer-events: none; }
+    .store-btn-soon:hover { transform: none !important; border-color: var(--border) !important; }
+    .soon-badge {
+      position: absolute; top: -9px; right: -9px;
+      background: var(--muted); color: #fff;
+      font-size: 9px; font-weight: 700; letter-spacing: .5px;
+      padding: 3px 8px; border-radius: 20px; text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .store-icon { font-size: 28px; line-height: 1; display: flex; align-items: center; }
+    .store-icon i { font-size: 26px; }
     .store-text small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
     .store-text strong { display: block; font-size: 17px; color: var(--text); font-weight: 700; margin-top: 1px; }
     .download-invite {
@@ -392,7 +404,7 @@
     </div>
     <div class="hero-badge">
       <div class="hero-badge-dot"></div>
-      <span data-i18n="hero.badge">Convites disponíveis</span>
+      <span data-i18n="hero.badge">Disponível no Android e iOS</span>
     </div>
     <h1 data-i18n-html="hero.titleHtml">Conexões que<br /><span>te levam</span></h1>
     <p data-i18n="hero.sub">Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.</p>
@@ -424,8 +436,8 @@
         <div class="stat-label" data-i18n="hero.stat3lbl">Define o valor</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value" data-i18n="hero.stat4val">Privado</div>
-        <div class="stat-label" data-i18n="hero.stat4lbl">Só por convite</div>
+        <div class="stat-value" data-i18n="hero.stat4val">Grátis</div>
+        <div class="stat-label" data-i18n="hero.stat4lbl">Para baixar</div>
       </div>
     </div>
   </div>
@@ -436,13 +448,13 @@
   <div class="section-header center">
     <span class="section-label" data-i18n="how.label">Simples assim</span>
     <h2 class="section-title" data-i18n="how.title">Como o Eluus funciona</h2>
-    <p class="section-sub" data-i18n="how.sub">Do convite à chegada, tudo pensado para ser rápido, seguro e direto.</p>
+    <p class="section-sub" data-i18n="how.sub">Do download à chegada, tudo pensado para ser rápido, seguro e direto.</p>
   </div>
   <div class="steps-grid">
     <div class="step">
       <div class="step-num">1</div>
-      <h3 data-i18n="how.s1title">Receba um convite</h3>
-      <p data-i18n="how.s1text">O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.</p>
+      <h3 data-i18n="how.s1title">Baixe o app</h3>
+      <p data-i18n="how.s1text">Baixe o Eluus gratuitamente na Google Play. Qualquer pessoa pode instalar, sem necessidade de convite.</p>
     </div>
     <div class="step">
       <div class="step-num">2</div>
@@ -451,8 +463,8 @@
     </div>
     <div class="step">
       <div class="step-num">3</div>
-      <h3 data-i18n="how.s3title">Conecte-se</h3>
-      <p data-i18n="how.s3text">Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.</p>
+      <h3 data-i18n="how.s3title">Adicione sua rede</h3>
+      <p data-i18n="how.s3text">Para solicitar ou aceitar corridas, adicione motoristas ou passageiros usando o código exclusivo de cada usuário.</p>
     </div>
     <div class="step">
       <div class="step-num">4</div>
@@ -471,9 +483,9 @@
   </div>
   <div class="diff-grid">
     <div class="diff-card">
-      <div class="diff-emoji">🔒</div>
-      <h3 data-i18n="diff.c1title">Acesso por convite</h3>
-      <p data-i18n="diff.c1text">Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.</p>
+      <div class="diff-emoji">🤝</div>
+      <h3 data-i18n="diff.c1title">Rede de confiança</h3>
+      <p data-i18n="diff.c1text">Você escolhe com quem se conecta: adicione motoristas e passageiros com o código exclusivo de cada usuário. Sua rede, sua escolha.</p>
     </div>
     <div class="diff-card">
       <div class="diff-emoji">💸</div>
@@ -645,27 +657,27 @@
     <div class="download-text">
       <span class="section-label" data-i18n="dl.label">Disponível agora</span>
       <h2 data-i18n-html="dl.titleHtml">Faça parte da<br />rede Eluus</h2>
-      <p data-i18n="dl.text">Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.</p>
+      <p data-i18n="dl.text">Baixe o app gratuitamente e comece a se mover com confiança. Disponível para Android e iOS. Para adicionar motoristas ou passageiros, use o código exclusivo de cada usuário.</p>
     </div>
     <div class="download-btns">
-      <a href="#" class="store-btn">
-        <div class="store-icon">🤖</div>
+      <a href="https://play.google.com/store/apps/details?id=app.eluus.app" target="_blank" rel="noopener" class="store-btn">
+        <div class="store-icon"><i class="fab fa-google-play" style="color:#01875f;"></i></div>
         <div class="store-text">
           <small data-i18n="dl.androidSmall">Disponível no</small>
           <strong data-i18n="dl.androidStrong">Google Play</strong>
         </div>
       </a>
-      <a href="#" class="store-btn">
-        <div class="store-icon">🍎</div>
+      <a href="https://apps.apple.com/us/app/eluus/id6769097819" target="_blank" rel="noopener" class="store-btn">
+        <div class="store-icon"><i class="fab fa-apple" style="color:#f1f5f9;"></i></div>
         <div class="store-text">
           <small data-i18n="dl.iosSmall">Baixar na</small>
           <strong data-i18n="dl.iosStrong">App Store</strong>
         </div>
       </a>
       <div class="download-invite">
-        <div class="invite-icon">🔑</div>
+        <div class="invite-icon">🔗</div>
         <div class="invite-text" data-i18n-html="dl.inviteHtml">
-          Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede.
+          Para <strong>adicionar um motorista ou passageiro</strong>, use o código exclusivo do usuário. Sua rede, sua escolha.
         </div>
       </div>
     </div>
@@ -702,7 +714,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <p data-i18n="foot.copy">© 2025 Eluus. Todos os direitos reservados.</p>
+      <p data-i18n="foot.copy">© 2026 Eluus. Todos os direitos reservados.</p>
       <p data-i18n="foot.made">Feito com ❤️ para quem valoriza confiança.</p>
     </div>
   </div>
@@ -717,31 +729,31 @@
       translation: {
         meta: {
           title: "Eluus — Corridas com quem você confia",
-          description: "Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma."
+          description: "Eluus é o app de transporte privado entre pessoas que se conhecem. Corridas com quem você confia, sem taxas de plataforma."
         },
         nav: { howItWorks: "Como funciona", passengers: "Passageiros", drivers: "Motoristas", download: "Baixar app" },
         hero: {
-          badge: "Convites disponíveis",
+          badge: "Disponível no Android e iOS",
           titleHtml: "Conexões que<br><span>te levam</span>",
           sub: "Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.",
           btnDownload: "Baixar grátis", btnHow: "Como funciona",
           stat1val: "100%", stat1lbl: "Motoristas conhecidos",
           stat2val: "R$0", stat2lbl: "Taxa de plataforma",
           stat3val: "Você", stat3lbl: "Define o valor",
-          stat4val: "Privado", stat4lbl: "Só por convite"
+          stat4val: "Grátis", stat4lbl: "Para baixar"
         },
         how: {
           label: "Simples assim", title: "Como o Eluus funciona",
-          sub: "Do convite à chegada, tudo pensado para ser rápido, seguro e direto.",
-          s1title: "Receba um convite", s1text: "O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.",
+          sub: "Do download à chegada, tudo pensado para ser rápido, seguro e direto.",
+          s1title: "Baixe o app", s1text: "Baixe o Eluus gratuitamente na Google Play. Qualquer pessoa pode instalar, sem necessidade de convite.",
           s2title: "Crie sua conta", s2text: "Cadastro rápido com nome, e-mail e CPF. Em minutos você já pode solicitar ou oferecer corridas.",
-          s3title: "Conecte-se", s3text: "Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.",
+          s3title: "Adicione sua rede", s3text: "Para solicitar ou aceitar corridas, adicione motoristas ou passageiros usando o código exclusivo de cada usuário.",
           s4title: "Viaje com confiança", s4text: "Solicite ou aceite corridas. Valor combinado, chat integrado e navegação direto no mapa."
         },
         diff: {
           label: "Por que Eluus", title: "Diferente de tudo que você conhece",
           sub: "Não somos um app de transporte comum. Somos uma rede de confiança com mobilidade.",
-          c1title: "Acesso por convite", c1text: "Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.",
+          c1title: "Rede de confiança", c1text: "Você escolhe com quem se conecta: adicione motoristas e passageiros com o código exclusivo de cada usuário. Sua rede, sua escolha.",
           c2title: "Sem taxas de plataforma", c2text: "O valor vai direto para o motorista. Nenhum percentual retido, nenhuma cobrança por corrida.",
           c3title: "Passageiro define o valor", c3text: "Você sabe quanto seu motorista cobra por km e decide antes de solicitar. Transparência total.",
           c4title: "Chat integrado", c4text: "Comunique-se com o motorista diretamente pelo app durante toda a corrida, sem precisar de número.",
@@ -776,17 +788,17 @@
         },
         dl: {
           label: "Disponível agora", titleHtml: "Faça parte da<br>rede Eluus",
-          text: "Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.",
+          text: "Baixe o app gratuitamente e comece a se mover com confiança. Disponível para Android e iOS. Para adicionar motoristas ou passageiros, use o código exclusivo de cada usuário.",
           androidSmall: "Disponível no", androidStrong: "Google Play",
           iosSmall: "Baixar na", iosStrong: "App Store",
-          inviteHtml: "Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede."
+          inviteHtml: "Para <strong>adicionar um motorista ou passageiro</strong>, use o código exclusivo do usuário. Sua rede, sua escolha."
         },
         foot: {
           tagline: "Conexões que te levam. Transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma.",
           appLabel: "App", legalLabel: "Legal",
           lhow: "Como funciona", lpass: "Para passageiros", ldriv: "Para motoristas", ldl: "Download",
           lterms: "Termos de uso", lprivacy: "Política de privacidade", lloc: "Uso de localização",
-          copy: "© 2025 Eluus. Todos os direitos reservados.",
+          copy: "© 2026 Eluus. Todos os direitos reservados.",
           made: "Feito com ❤️ para quem valoriza confiança."
         }
       }
@@ -795,31 +807,31 @@
       translation: {
         meta: {
           title: "Eluus — Rides with people you trust",
-          description: "Eluus is the invite-only private transport app. Rides with people you know, no platform fees."
+          description: "Eluus is the private transport app between people who know each other. Rides with people you trust, no platform fees."
         },
         nav: { howItWorks: "How it works", passengers: "Passengers", drivers: "Drivers", download: "Download" },
         hero: {
-          badge: "Invites available",
+          badge: "Available on Android & iOS",
           titleHtml: "Connections that<br><span>move you</span>",
           sub: "Private transport with people you already know. No strangers, no platform fees, with total trust.",
           btnDownload: "Download free", btnHow: "How it works",
           stat1val: "100%", stat1lbl: "Known drivers",
           stat2val: "$0", stat2lbl: "Platform fee",
           stat3val: "You", stat3lbl: "Set the price",
-          stat4val: "Private", stat4lbl: "Invite only"
+          stat4val: "Free", stat4lbl: "To download"
         },
         how: {
           label: "That simple", title: "How Eluus works",
-          sub: "From invite to arrival, everything designed to be fast, safe, and straightforward.",
-          s1title: "Receive an invite", s1text: "Access to Eluus is exclusive by invite from someone in your network. No strangers in the system.",
+          sub: "From download to arrival, everything designed to be fast, safe, and straightforward.",
+          s1title: "Download the app", s1text: "Download Eluus for free on Google Play. Anyone can install it, no invite required.",
           s2title: "Create your account", s2text: "Quick sign-up with name and email. In minutes you can already request or offer rides.",
-          s3title: "Connect", s3text: "Add drivers or passengers from your network using their invite code or scanning their QR Code.",
+          s3title: "Build your network", s3text: "To request or offer rides, add drivers or passengers using each user's exclusive code.",
           s4title: "Ride with confidence", s4text: "Request or accept rides. Agreed price, integrated chat, and navigation directly on the map."
         },
         diff: {
           label: "Why Eluus", title: "Different from everything you know",
           sub: "We're not a regular transport app. We're a trust network with mobility.",
-          c1title: "Invite-only access", c1text: "Only people invited by someone already registered can join. Your network, your choice.",
+          c1title: "Trust network", c1text: "You choose who to connect with: add drivers and passengers using each user's exclusive code. Your network, your choice.",
           c2title: "No platform fees", c2text: "The fare goes directly to the driver. No percentage withheld, no charge per ride.",
           c3title: "Passenger sets the price", c3text: "You know how much your driver charges per km and decide before requesting. Full transparency.",
           c4title: "Integrated chat", c4text: "Communicate with the driver directly through the app throughout the ride, no phone number needed.",
@@ -854,17 +866,17 @@
         },
         dl: {
           label: "Available now", titleHtml: "Join the<br>Eluus network",
-          text: "Download the app, enter your invite code and start moving with confidence. Available for Android and iOS.",
+          text: "Download the app for free and start moving with confidence. Available for Android and iOS. To add drivers or passengers, use each user's exclusive code.",
           androidSmall: "Get it on", androidStrong: "Google Play",
           iosSmall: "Download on the", iosStrong: "App Store",
-          inviteHtml: "You need an <strong>invite code</strong> to create your account. Ask someone from your network."
+          inviteHtml: "To <strong>add a driver or passenger</strong>, use their exclusive code. Your network, your choice."
         },
         foot: {
           tagline: "Connections that move you. Private transport between people who know each other, with trust and no platform fees.",
           appLabel: "App", legalLabel: "Legal",
           lhow: "How it works", lpass: "For passengers", ldriv: "For drivers", ldl: "Download",
           lterms: "Terms of use", lprivacy: "Privacy policy", lloc: "Location use",
-          copy: "© 2025 Eluus. All rights reserved.",
+          copy: "© 2026 Eluus. All rights reserved.",
           made: "Made with ❤️ for those who value trust."
         }
       }
@@ -873,31 +885,31 @@
       translation: {
         meta: {
           title: "Eluus — Viajes con personas de confianza",
-          description: "Eluus es la app de transporte privado por invitación. Viajes con personas que conoces, sin comisiones de plataforma."
+          description: "Eluus es la app de transporte privado entre personas que se conocen. Viajes con quienes confías, sin comisiones de plataforma."
         },
         nav: { howItWorks: "Cómo funciona", passengers: "Pasajeros", drivers: "Conductores", download: "Descargar" },
         hero: {
-          badge: "Invitaciones disponibles",
+          badge: "Disponible en Android e iOS",
           titleHtml: "Conexiones que<br><span>te mueven</span>",
           sub: "Transporte privado con personas que ya conoces. Sin desconocidos, sin comisiones de plataforma, con total confianza.",
           btnDownload: "Descargar gratis", btnHow: "Cómo funciona",
           stat1val: "100%", stat1lbl: "Conductores conocidos",
           stat2val: "R$0", stat2lbl: "Sin comisión",
           stat3val: "Tú", stat3lbl: "Fijas el precio",
-          stat4val: "Privado", stat4lbl: "Solo por invitación"
+          stat4val: "Gratis", stat4lbl: "Para descargar"
         },
         how: {
           label: "Así de simple", title: "Cómo funciona Eluus",
-          sub: "Desde la invitación hasta la llegada, todo pensado para ser rápido, seguro y directo.",
-          s1title: "Recibe una invitación", s1text: "El acceso a Eluus es exclusivo por invitación de alguien de tu red. Sin desconocidos en el sistema.",
+          sub: "De la descarga a la llegada, todo pensado para ser rápido, seguro y directo.",
+          s1title: "Descarga la app", s1text: "Descarga Eluus gratis en Google Play. Cualquier persona puede instalarlo, sin necesidad de invitación.",
           s2title: "Crea tu cuenta", s2text: "Registro rápido con nombre y correo electrónico. En minutos ya puedes solicitar u ofrecer viajes.",
-          s3title: "Conéctate", s3text: "Agrega conductores o pasajeros de tu red usando el código de invitación o escaneando su código QR.",
+          s3title: "Construye tu red", s3text: "Para solicitar o aceptar viajes, agrega conductores o pasajeros usando el código exclusivo de cada usuario.",
           s4title: "Viaja con confianza", s4text: "Solicita o acepta viajes. Precio acordado, chat integrado y navegación directo en el mapa."
         },
         diff: {
           label: "Por qué Eluus", title: "Diferente a todo lo que conoces",
           sub: "No somos una app de transporte común. Somos una red de confianza con movilidad.",
-          c1title: "Acceso por invitación", c1text: "Solo personas invitadas por alguien ya registrado entran a la plataforma. Tu red, tu elección.",
+          c1title: "Red de confianza", c1text: "Tú eliges con quién conectarte: agrega conductores y pasajeros con el código exclusivo de cada uno. Tu red, tu elección.",
           c2title: "Sin comisiones de plataforma", c2text: "El dinero va directo al conductor. Sin porcentaje retenido, sin cargo por viaje.",
           c3title: "El pasajero fija el precio", c3text: "Sabes cuánto cobra tu conductor por km y decides antes de solicitar. Transparencia total.",
           c4title: "Chat integrado", c4text: "Comunícate con el conductor directamente por la app durante todo el viaje, sin necesitar número.",
@@ -932,17 +944,17 @@
         },
         dl: {
           label: "Disponible ahora", titleHtml: "Únete a la<br>red Eluus",
-          text: "Descarga la app, ingresa tu código de invitación y empieza a moverte con confianza. Disponible para Android e iOS.",
+          text: "Descarga la app gratis y empieza a moverte con confianza. Disponible para Android e iOS. Para agregar conductores o pasajeros, usa el código exclusivo de cada usuario.",
           androidSmall: "Disponible en", androidStrong: "Google Play",
           iosSmall: "Descargar en el", iosStrong: "App Store",
-          inviteHtml: "Necesitas un <strong>código de invitación</strong> para crear tu cuenta. Pídelo a alguien de tu red."
+          inviteHtml: "Para <strong>agregar un conductor o pasajero</strong>, usa su código exclusivo. Tu red, tu elección."
         },
         foot: {
           tagline: "Conexiones que te mueven. Transporte privado entre personas que se conocen, con confianza y sin comisiones de plataforma.",
           appLabel: "App", legalLabel: "Legal",
           lhow: "Cómo funciona", lpass: "Para pasajeros", ldriv: "Para conductores", ldl: "Descargar",
           lterms: "Términos de uso", lprivacy: "Política de privacidad", lloc: "Uso de ubicación",
-          copy: "© 2025 Eluus. Todos los derechos reservados.",
+          copy: "© 2026 Eluus. Todos los derechos reservados.",
           made: "Hecho con ❤️ para quienes valoran la confianza."
         }
       }

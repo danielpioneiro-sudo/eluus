@@ -1,6 +1,6 @@
 import * as Localization from 'expo-localization';
 import { useRouter } from 'expo-router';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -76,15 +77,37 @@ export default function Comprar() {
 
   const brasil = isBrazil();
 
-  // Saldo em tempo real
+  const [modalCnh, setModalCnh] = useState(false);
+  const [cnhInput, setCnhInput] = useState('');
+  const [salvandoCnh, setSalvandoCnh] = useState(false);
+
+  // Saldo em tempo real + verificar CNH
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     const unsub = onSnapshot(doc(db, 'usuarios', uid), (snap) => {
-      if (snap.exists()) setCreditos(snap.data().creditos ?? 0);
+      if (snap.exists()) {
+        setCreditos(snap.data().creditos ?? 0);
+        if (!snap.data().cnh) setModalCnh(true);
+      }
     });
     return () => unsub();
   }, []);
+
+  const salvarCnh = async () => {
+    if (!cnhInput.trim()) { Alert.alert('Atenção', 'Digite o número da sua CNH'); return; }
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    setSalvandoCnh(true);
+    try {
+      await updateDoc(doc(db, 'usuarios', uid), { cnh: cnhInput.trim() });
+      setModalCnh(false);
+      setCnhInput('');
+    } catch (e: any) {
+      Alert.alert('Erro', e.message || 'Não foi possível salvar a CNH');
+    }
+    setSalvandoCnh(false);
+  };
 
   // IAP (iOS apenas)
   useEffect(() => {
@@ -299,6 +322,30 @@ export default function Comprar() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
+      {/* Modal CNH */}
+      <Modal visible={modalCnh} transparent animationType="fade">
+        <View style={styles.pixOverlay}>
+          <View style={styles.pixCard}>
+            <Text style={styles.pixTitulo}>Número da CNH</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', marginBottom: 8 }}>
+              Para comprar créditos precisamos do número da sua CNH.
+            </Text>
+            <TextInput
+              style={styles.cnhInput}
+              placeholder="Número da CNH"
+              placeholderTextColor="#4a5568"
+              value={cnhInput}
+              onChangeText={setCnhInput}
+              keyboardType="numeric"
+              maxLength={11}
+            />
+            <TouchableOpacity style={styles.pagoBtn} onPress={salvarCnh} disabled={salvandoCnh}>
+              <Text style={styles.pagoBtnTxt}>{salvandoCnh ? 'Salvando…' : 'Salvar'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal PIX (Android) */}
       <Modal visible={modalPix} transparent animationType="slide" onRequestClose={fecharModal}>
         <View style={styles.pixOverlay}>
@@ -487,4 +534,5 @@ const styles = StyleSheet.create({
   pagoSaldoNum: { color: '#22c55e', fontSize: 36, fontWeight: 'bold' },
   pagoBtn: { backgroundColor: '#22c55e', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 48, marginTop: 8 },
   pagoBtnTxt: { color: '#000', fontWeight: 'bold', fontSize: 16 },
+  cnhInput: { backgroundColor: '#1a1f2e', borderRadius: 14, padding: 16, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2a3044', width: '100%', marginBottom: 8 },
 });

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Eluus — Corridas com quem você confia",
-    "description": "Eluus é o app de transporte privado por convite. Corridas com pessoas que você conhece, sem taxas de plataforma."
+    "description": "Eluus é o app de transporte privado entre pessoas que se conhecem. Corridas com quem você confia, sem taxas de plataforma."
   },
   "nav": {
     "howItWorks": "Como funciona",
@@ -10,7 +10,7 @@
     "download": "Baixar app"
   },
   "hero": {
-    "badge": "Convites disponíveis",
+    "badge": "Disponível no Android e iOS",
     "titleHtml": "Conexões que<br><span>te levam</span>",
     "sub": "Transporte privado com pessoas que você já conhece. Sem estranhos, sem taxas de plataforma, com total confiança.",
     "btnDownload": "Baixar grátis",
@@ -21,19 +21,19 @@
     "stat2lbl": "Taxa de plataforma",
     "stat3val": "Você",
     "stat3lbl": "Define o valor",
-    "stat4val": "Privado",
-    "stat4lbl": "Só por convite"
+    "stat4val": "Grátis",
+    "stat4lbl": "Para baixar"
   },
   "how": {
     "label": "Simples assim",
     "title": "Como o Eluus funciona",
-    "sub": "Do convite à chegada, tudo pensado para ser rápido, seguro e direto.",
-    "s1title": "Receba um convite",
-    "s1text": "O acesso ao Eluus é exclusivo por convite de alguém da sua rede. Sem estranhos no sistema.",
+    "sub": "Do download à chegada, tudo pensado para ser rápido, seguro e direto.",
+    "s1title": "Baixe o app",
+    "s1text": "Baixe o Eluus gratuitamente na Google Play. Qualquer pessoa pode instalar, sem necessidade de convite.",
     "s2title": "Crie sua conta",
     "s2text": "Cadastro rápido com nome, e-mail e CPF. Em minutos você já pode solicitar ou oferecer corridas.",
-    "s3title": "Conecte-se",
-    "s3text": "Adicione motoristas ou passageiros da sua rede usando o código de convite ou lendo o QR Code deles.",
+    "s3title": "Adicione sua rede",
+    "s3text": "Para solicitar ou aceitar corridas, adicione motoristas ou passageiros usando o código exclusivo de cada usuário.",
     "s4title": "Viaje com confiança",
     "s4text": "Solicite ou aceite corridas. Valor combinado, chat integrado e navegação direto no mapa."
   },
@@ -41,8 +41,8 @@
     "label": "Por que Eluus",
     "title": "Diferente de tudo que você conhece",
     "sub": "Não somos um app de transporte comum. Somos uma rede de confiança com mobilidade.",
-    "c1title": "Acesso por convite",
-    "c1text": "Somente pessoas convidadas por alguém já cadastrado entram na plataforma. Sua rede, sua escolha.",
+    "c1title": "Rede de confiança",
+    "c1text": "Você escolhe com quem se conecta: adicione motoristas e passageiros com o código exclusivo de cada usuário. Sua rede, sua escolha.",
     "c2title": "Sem taxas de plataforma",
     "c2text": "O valor vai direto para o motorista. Nenhum percentual retido, nenhuma cobrança por corrida.",
     "c3title": "Passageiro define o valor",
@@ -103,12 +103,12 @@
   "dl": {
     "label": "Disponível agora",
     "titleHtml": "Faça parte da<br>rede Eluus",
-    "text": "Baixe o app, insira seu código de convite e comece a se mover com confiança. Disponível para Android e iOS.",
+    "text": "Baixe o app gratuitamente e comece a se mover com confiança. Disponível para Android e iOS. Para adicionar motoristas ou passageiros, use o código exclusivo de cada usuário.",
     "androidSmall": "Disponível no",
     "androidStrong": "Google Play",
     "iosSmall": "Baixar na",
     "iosStrong": "App Store",
-    "inviteHtml": "Precisa de um <strong>código de convite</strong> para criar sua conta. Peça para alguém da sua rede."
+    "inviteHtml": "Para <strong>adicionar um motorista ou passageiro</strong>, use o código exclusivo do usuário. Sua rede, sua escolha."
   },
   "foot": {
     "tagline": "Conexões que te levam. Transporte privado entre pessoas que se conhecem, com confiança e sem taxas de plataforma.",
@@ -121,7 +121,7 @@
     "lterms": "Termos de uso",
     "lprivacy": "Política de privacidade",
     "lloc": "Uso de localização",
-    "copy": "© 2025 Eluus. Todos os direitos reservados.",
+    "copy": "© 2026 Eluus. Todos os direitos reservados.",
     "made": "Feito com ❤️ para quem valoriza confiança."
   }
 }

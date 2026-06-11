@@ -1,9 +1,11 @@
 import { Audio } from 'expo-av';
+import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { addDoc, arrayRemove, collection, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -93,6 +95,11 @@ export default function Motorista() {
   const [msgsPosCorridaBadge, setMsgsPosCorridaBadge] = useState(0);
   const unsubsMsgsPosRef = useRef<any[]>([]);
   const unsubCorridaAtivaRef = useRef<any>(null);
+  const [passageiros, setPassageiros] = useState<any[]>([]);
+  const unsubPassageirosRef = useRef<any>(null);
+  const [mostrarConvidar, setMostrarConvidar] = useState(false);
+  const [codigoConvite, setCodigoConvite] = useState('');
+  const [enviandoConvite, setEnviandoConvite] = useState(false);
 
   useEffect(() => {
     registrarParaNotificacoes();
@@ -101,6 +108,7 @@ export default function Motorista() {
     escutarSolicitacoes();
     restaurarCorrida();
     escutarMsgsPosCorridaMotorista();
+    escutarPassageiros();
     const appStateSub = AppState.addEventListener('change', async (nextState) => {
       if (nextState === 'active') {
         verificarCorridasPendentesAoVoltar();
@@ -114,6 +122,7 @@ export default function Motorista() {
       if (unsubChatRef.current) unsubChatRef.current();
       if (locationWatchRef.current) locationWatchRef.current.remove();
       if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
+      if (unsubPassageirosRef.current) unsubPassageirosRef.current();
       unsubsMsgsPosRef.current.forEach(u => u());
       appStateSub.remove();
     };
@@ -407,6 +416,12 @@ export default function Motorista() {
     } catch (e) { /* não crítico */ }
   };
 
+  const copiarCodigo = async () => {
+    await Clipboard.setStringAsync(codigo);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(t('common.copied') || 'Copiado!', codigo);
+  };
+
   const toggleOnline = async (valor: boolean) => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
@@ -637,6 +652,99 @@ export default function Motorista() {
     setDenunciando(false);
   };
 
+  const escutarPassageiros = () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    if (unsubPassageirosRef.current) unsubPassageirosRef.current();
+    const q = query(
+      collection(db, 'usuarios'),
+      where('tipo', '==', 'passageiro'),
+      where('motoristas', 'array-contains', uid)
+    );
+    unsubPassageirosRef.current = onSnapshot(q, (snap) => {
+      setPassageiros(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  };
+
+  const removerPassageiro = async (passageiroId: string, passageiroNome: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    Alert.alert(
+      'Remover passageiro',
+      `Deseja remover ${passageiroNome} da sua rede?`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Remover', style: 'destructive', onPress: async () => {
+            try {
+              await updateDoc(doc(db, 'usuarios', passageiroId), { motoristas: arrayRemove(uid) });
+            } catch (e) {
+              Alert.alert(t('common.error'), 'Não foi possível remover o passageiro');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const convidarPassageiro = async () => {
+    if (!codigoConvite || codigoConvite.length < 6) {
+      Alert.alert(t('common.attention'), 'Digite o código completo do passageiro');
+      return;
+    }
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    setEnviandoConvite(true);
+    try {
+      const q = query(
+        collection(db, 'usuarios'),
+        where('codigo', '==', codigoConvite.toUpperCase()),
+        where('tipo', '==', 'passageiro')
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        Alert.alert('Não encontrado', 'Passageiro com este código não encontrado');
+        setEnviandoConvite(false);
+        return;
+      }
+      const passageiroDoc = snap.docs[0];
+      const passageiroNome = passageiroDoc.data().nome || 'Passageiro';
+
+      if (passageiros.some(p => p.id === passageiroDoc.id)) {
+        Alert.alert(t('common.attention'), `${passageiroNome} já está na sua rede`);
+        setEnviandoConvite(false);
+        return;
+      }
+
+      const conviteExistente = await getDocs(query(
+        collection(db, 'convites'),
+        where('deId', '==', uid),
+        where('paraId', '==', passageiroDoc.id),
+        where('status', '==', 'pendente')
+      ));
+      if (!conviteExistente.empty) {
+        Alert.alert(t('common.attention'), `Convite já enviado para ${passageiroNome}`);
+        setEnviandoConvite(false);
+        return;
+      }
+
+      await addDoc(collection(db, 'convites'), {
+        deId: uid,
+        deNome: nomeUsuario,
+        paraId: passageiroDoc.id,
+        status: 'pendente',
+        criadoEm: serverTimestamp(),
+      });
+
+      Alert.alert('Convite enviado', `Convite enviado para ${passageiroNome}`);
+      setCodigoConvite('');
+      setMostrarConvidar(false);
+    } catch (e) {
+      Alert.alert(t('common.error'), 'Não foi possível enviar o convite');
+    }
+    setEnviandoConvite(false);
+  };
+
   const primeiroNome = nomeUsuario.split(' ')[0];
 
   return (
@@ -650,8 +758,10 @@ export default function Motorista() {
               <Text style={styles.qrFecharTxt}>✕</Text>
             </TouchableOpacity>
             <Text style={styles.qrTitulo}>{t('motorista.myQrCode')}</Text>
-            <Image source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('eluus://cadastro?codigo=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }} style={styles.qrImage} />
-            <Text style={styles.qrCodigo}>{codigo}</Text>
+            <Image source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('https://voucom-285e0.web.app/m?c=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }} style={styles.qrImage} />
+            <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
+              <Text style={styles.qrCodigo}>{codigo}</Text>
+            </TouchableOpacity>
             <Text style={styles.qrInfo}>{t('motorista.qrInfo')}</Text>
           </View>
         </View>
@@ -754,7 +864,7 @@ export default function Motorista() {
                   </View>
                   <View style={styles.modalInfoItem}>
                     <Text style={styles.modalInfoLabel}>{t('motorista.value')}</Text>
-                    <Text style={styles.modalInfoPreco}>R$ {solicitacaoAtiva.valor}</Text>
+                    <Text style={styles.modalInfoPreco}>$ {solicitacaoAtiva.valor}</Text>
                   </View>
                 </View>
                 <View style={styles.modalBtns}>
@@ -930,7 +1040,7 @@ export default function Motorista() {
                 {corridaAceita.paradaDescricao && (
                   <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAceita.paradaDescricao}</Text>
                 )}
-                <Text style={styles.corridaAtivaValor}>💰 R$ {corridaAceita.valor} · {corridaAceita.distancia} km</Text>
+                <Text style={styles.corridaAtivaValor}>💰 $ {corridaAceita.valor} · {corridaAceita.distancia} km</Text>
               </View>
             </View>
             <View style={styles.corridaAtivaBtns}>
@@ -964,7 +1074,7 @@ export default function Motorista() {
             <Text style={styles.statLabel}>{t('motorista.rides')}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValor}>R$ {precoPorKm.toFixed(2)}</Text>
+            <Text style={styles.statValor}>$ {precoPorKm.toFixed(2)}</Text>
             <Text style={styles.statLabel}>{t('motorista.perKm')}</Text>
           </View>
           <View style={styles.statCard}>
@@ -1007,7 +1117,7 @@ export default function Motorista() {
             }}>
               <Text style={styles.precoBtnTxt}>−</Text>
             </TouchableOpacity>
-            <Text style={styles.precoValor}>R$ {precoPorKm.toFixed(2)}/km</Text>
+            <Text style={styles.precoValor}>$ {precoPorKm.toFixed(2)}/km</Text>
             <TouchableOpacity style={styles.precoBtn} onPress={async () => {
               const novo = parseFloat((precoPorKm + 0.1).toFixed(2));
               await updateDoc(doc(db, 'usuarios', auth.currentUser!.uid), { precoPorKm: novo });
@@ -1042,7 +1152,10 @@ export default function Motorista() {
         <View style={styles.secao}>
           <Text style={styles.secaoTitulo}>{t('motorista.myCode')}</Text>
           <View style={styles.codigoCard}>
-            <Text style={styles.codigoTxt}>{codigo}</Text>
+            <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
+              <Text style={styles.codigoTxt}>{codigo}</Text>
+              <Text style={styles.codigoCopiarHint}>📋 {t('common.tapToCopy') || 'Toque para copiar'}</Text>
+            </TouchableOpacity>
             <Text style={styles.codigoSub}>{t('motorista.shareCode')}</Text>
             <View style={styles.codigoBtnsRow}>
               <TouchableOpacity style={styles.codigoAcaoBtn} onPress={() => setMostrarQR(true)}>
@@ -1071,10 +1184,66 @@ export default function Motorista() {
                 <View style={styles.solicitacaoInfo}>
                   <Text style={styles.solicitacaoNome}>{s.passageiroNome}</Text>
                   <Text style={styles.solicitacaoDestino}>📍 {s.destino}</Text>
-                  <Text style={styles.solicitacaoValor}>R$ {s.valor} · {s.distancia} km</Text>
+                  <Text style={styles.solicitacaoValor}>$ {s.valor} · {s.distancia} km</Text>
                 </View>
                 <Text style={styles.verBtn}>Ver →</Text>
               </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {/* Minha rede de passageiros */}
+        <View style={styles.secao}>
+          <View style={styles.redeHeader}>
+            <Text style={styles.secaoTitulo}>Minha rede</Text>
+            <TouchableOpacity style={styles.convidarBtn} onPress={() => setMostrarConvidar(v => !v)}>
+              <Text style={styles.convidarBtnTxt}>+ Convidar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {mostrarConvidar && (
+            <View style={styles.convidarCard}>
+              <Text style={styles.convidarLabel}>Código do passageiro</Text>
+              <TextInput
+                style={styles.convidarInput}
+                placeholder="Ex: AB12CD"
+                placeholderTextColor="#64748b"
+                value={codigoConvite}
+                onChangeText={setCodigoConvite}
+                autoCapitalize="characters"
+                maxLength={6}
+              />
+              <View style={styles.convidarBtns}>
+                <TouchableOpacity style={styles.convidarCancelar} onPress={() => { setMostrarConvidar(false); setCodigoConvite(''); }}>
+                  <Text style={styles.convidarCancelarTxt}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.convidarConfirmar} onPress={convidarPassageiro} disabled={enviandoConvite}>
+                  <Text style={styles.convidarConfirmarTxt}>{enviandoConvite ? 'Enviando…' : 'Enviar convite'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {passageiros.length === 0 ? (
+            <View style={styles.vazio}>
+              <Text style={styles.vazioemoji}>🧍</Text>
+              <Text style={styles.vaziotxt}>Nenhum passageiro na rede</Text>
+              <Text style={styles.vaziossub}>Convide passageiros pelo código</Text>
+            </View>
+          ) : (
+            passageiros.map((p: any) => (
+              <View key={p.id} style={styles.passageiroCard}>
+                <View style={styles.passageiroAvatar}>
+                  <Text style={styles.passageiroAvatarTxt}>{p.nome?.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.passageiroNome}>{p.nome}</Text>
+                  <Text style={styles.passageiroSub}>{p.telefone || ''}</Text>
+                </View>
+                <TouchableOpacity style={styles.removerPassageiroBtn} onPress={() => removerPassageiro(p.id, p.nome)}>
+                  <Text style={styles.removerPassageiroTxt}>Remover</Text>
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
@@ -1132,6 +1301,7 @@ const styles = StyleSheet.create({
   codigoCard: { backgroundColor: '#1a1f2e', borderRadius: 16, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#4a9eff', gap: 8 },
   codigoTxt: { color: '#4a9eff', fontWeight: 'bold', fontSize: 32, letterSpacing: 6 },
   codigoSub: { color: '#64748b', fontSize: 12, textAlign: 'center' },
+  codigoCopiarHint: { color: '#4a9eff', fontSize: 11, textAlign: 'center', marginTop: 4, opacity: 0.7 },
   vazio: { backgroundColor: '#1a1f2e', borderRadius: 16, padding: 32, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#2a3044' },
   vazioemoji: { fontSize: 40, marginBottom: 8 },
   vaziotxt: { color: '#fff', fontWeight: '600', fontSize: 15, textAlign: 'center' },
@@ -1232,4 +1402,22 @@ const styles = StyleSheet.create({
   creditosNum: { fontSize: 42, fontWeight: 'bold', lineHeight: 50, marginLeft: 12 },
   badgeDot: { position: 'absolute', top: -6, right: -6, backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
   badgeTxt: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
+  redeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  convidarBtn: { backgroundColor: '#1a2a4a', borderRadius: 10, paddingVertical: 6, paddingHorizontal: 14, borderWidth: 1, borderColor: '#4a9eff' },
+  convidarBtnTxt: { color: '#4a9eff', fontWeight: '700', fontSize: 13 },
+  convidarCard: { backgroundColor: '#1a1f2e', borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#4a9eff44', gap: 10 },
+  convidarLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  convidarInput: { backgroundColor: '#0d0f14', borderRadius: 12, padding: 14, color: '#fff', fontSize: 22, fontWeight: 'bold', letterSpacing: 6, textAlign: 'center', borderWidth: 1, borderColor: '#4a9eff' },
+  convidarBtns: { flexDirection: 'row', gap: 10 },
+  convidarCancelar: { flex: 1, backgroundColor: '#2a3044', borderRadius: 12, padding: 12, alignItems: 'center' },
+  convidarCancelarTxt: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  convidarConfirmar: { flex: 1, backgroundColor: '#4a9eff', borderRadius: 12, padding: 12, alignItems: 'center' },
+  convidarConfirmarTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  passageiroCard: { backgroundColor: '#1a1f2e', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10, borderWidth: 1, borderColor: '#2a3044' },
+  passageiroAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#7c5cfc', alignItems: 'center', justifyContent: 'center' },
+  passageiroAvatarTxt: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  passageiroNome: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  passageiroSub: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  removerPassageiroBtn: { backgroundColor: '#2a1a1a', borderRadius: 10, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: '#ef4444' },
+  removerPassageiroTxt: { color: '#ef4444', fontWeight: '700', fontSize: 12 },
 });

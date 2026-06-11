@@ -70,7 +70,6 @@ export default function CompletarCadastro() {
   const [cpf, setCpf] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipo, setTipo] = useState('passageiro');
-  const [cnh, setCnh] = useState('');
   const [codigoConvite, setCodigoConvite] = useState('');
   const [declaracaoMotorista, setDeclaracaoMotorista] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -113,10 +112,6 @@ export default function CompletarCadastro() {
     }
     if (!isBrasil && !validarTelefoneIntl(telLimpo)) {
       Alert.alert('Telefone inválido', 'Use o formato internacional: +1 555 1234567');
-      return;
-    }
-    if (tipo === 'motorista' && isBrasil && !cnh.trim()) {
-      Alert.alert('Atenção', 'Digite o número da sua CNH');
       return;
     }
     if (tipo === 'motorista' && !declaracaoMotorista) {
@@ -165,7 +160,6 @@ export default function CompletarCadastro() {
         pais,
         phoneVerified: isBrasil,
         ...(isBrasil && { cpf: cpfLimpo }),
-        ...(isBrasil && tipo === 'motorista' && { cnh: cnh.trim() }),
         criadoEm: new Date(),
       });
 
@@ -245,21 +239,6 @@ export default function CompletarCadastro() {
           <Text style={styles.smsAviso}>
             📱 Seu número de telefone é usado para verificar sua identidade
           </Text>
-        )}
-
-        {tipo === 'motorista' && isBrasil && (
-          <>
-            <Text style={styles.secao}>Dados do motorista</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Número da CNH"
-              placeholderTextColor="#4a5568"
-              value={cnh}
-              onChangeText={setCnh}
-              keyboardType="numeric"
-              maxLength={11}
-            />
-          </>
         )}
 
         <Text style={styles.secao}>Código de convite</Text>

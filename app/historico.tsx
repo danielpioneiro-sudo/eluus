@@ -378,7 +378,7 @@ export default function Historico() {
           </View>
           <View style={styles.resumoCard}>
             <Text style={[styles.resumoValor, { color: '#4a9eff', fontSize: 16 }]}>
-              R$ {totalGasto.toFixed(2)}
+              $ {totalGasto.toFixed(2)}
             </Text>
             <Text style={styles.resumoLabel}>
               {tipo === 'motorista' ? t('historico.received') : t('historico.spent')}
@@ -443,7 +443,7 @@ export default function Historico() {
                   </View>
                   <View style={styles.corridaRow}>
                     <Text style={styles.corridaLabel}>{t('historico.value')}</Text>
-                    <Text style={styles.corridaPreco}>R$ {c.valor}</Text>
+                    <Text style={styles.corridaPreco}>$ {c.valor}</Text>
                   </View>
                 </View>
 

@@ -123,7 +123,7 @@ export default function Relatorio() {
               <Text style={styles.resumoLabel}>{t('relatorio.rides')}</Text>
             </View>
             <View style={styles.resumoCard}>
-              <Text style={styles.resumoValor}>R$ {totalValor.toFixed(2)}</Text>
+              <Text style={styles.resumoValor}>$ {totalValor.toFixed(2)}</Text>
               <Text style={styles.resumoLabel}>{t('relatorio.earned')}</Text>
             </View>
             <View style={styles.resumoCard}>
@@ -139,13 +139,13 @@ export default function Relatorio() {
               <View key={nome} style={styles.passageiroSection}>
                 <View style={styles.passageiroHeader}>
                   <Text style={styles.passageiroNome}>{nome}</Text>
-                  <Text style={styles.passageiroTotal}>{lista.length}x · R$ {totalPax.toFixed(2)}</Text>
+                  <Text style={styles.passageiroTotal}>{lista.length}x · $ {totalPax.toFixed(2)}</Text>
                 </View>
                 {lista.map(c => (
                   <View key={c.id} style={styles.corridaItem}>
                     <View style={styles.corridaItemTop}>
                       <Text style={styles.corridaItemDestino} numberOfLines={1}>📍 {c.destino}</Text>
-                      <Text style={styles.corridaItemValor}>R$ {c.valor}</Text>
+                      <Text style={styles.corridaItemValor}>$ {c.valor}</Text>
                     </View>
                     <View style={styles.corridaItemBottom}>
                       <Text style={styles.corridaItemInfo}>{c.distancia} km · {formatarData(c.criadoEm)}</Text>

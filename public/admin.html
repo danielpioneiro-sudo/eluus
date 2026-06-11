@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eluus Admin</title>
+  <link rel="icon" type="image/png" href="images/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+    :root {
+      --orange: #f97316;
+      --orange-dim: rgba(249,115,22,.12);
+      --orange-border: rgba(249,115,22,.3);
+      --bg: #0a0d12;
+      --bg2: #0f1318;
+      --bg3: #141920;
+      --card: #161c25;
+      --border: rgba(255,255,255,.07);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,.12);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,.12);
+      --blue: #4a9eff;
+      --blue-dim: rgba(74,158,255,.12);
+    }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+    /* ── LOGIN ── */
+    #login {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .login-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 24px; padding: 48px 40px; width: 100%; max-width: 400px;
+    }
+    .login-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; justify-content: center; }
+    .login-logo img { width: 36px; height: 36px; border-radius: 10px; }
+    .login-logo span { font-size: 22px; font-weight: 800; }
+    .login-badge {
+      display: inline-block; background: var(--orange-dim); border: 1px solid var(--orange-border);
+      color: var(--orange); font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; padding: 4px 12px; border-radius: 100px;
+      margin-bottom: 28px; text-align: center; width: 100%;
+    }
+    .login-box h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .login-box p { color: var(--muted2); font-size: 13px; margin-bottom: 28px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .8px; }
+    .field input {
+      width: 100%; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 13px 16px; color: var(--text); font-size: 14px;
+      font-family: inherit; outline: none; transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--orange); }
+    .btn-login {
+      width: 100%; background: var(--orange); color: #fff;
+      border: none; border-radius: 12px; padding: 14px; font-size: 15px;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+      margin-top: 6px; transition: opacity .2s;
+    }
+    .btn-login:hover { opacity: .9; }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+    #login-err { color: var(--red); font-size: 13px; margin-top: 12px; text-align: center; }
+
+    /* ── PANEL LAYOUT ── */
+    #panel { display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 24px 20px 20px; border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo img { width: 32px; height: 32px; border-radius: 8px; }
+    .sidebar-logo span { font-size: 18px; font-weight: 800; }
+    .sidebar-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--orange);
+      background: var(--orange-dim); border: 1px solid var(--orange-border);
+      padding: 2px 7px; border-radius: 4px; margin-left: auto;
+    }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px; cursor: pointer;
+      color: var(--muted2); font-size: 14px; font-weight: 500;
+      transition: background .15s, color .15s; border: none; background: none;
+      font-family: inherit; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: var(--orange-dim); color: var(--orange); font-weight: 700; }
+    .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer {
+      padding: 16px 12px; border-top: 1px solid var(--border);
+    }
+    .sidebar-user { font-size: 12px; color: var(--muted); margin-bottom: 10px; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-logout {
+      width: 100%; padding: 9px; border-radius: 10px;
+      background: var(--red-dim); border: 1px solid rgba(239,68,68,.2);
+      color: var(--red); font-size: 13px; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: opacity .2s;
+    }
+    .btn-logout:hover { opacity: .8; }
+
+    /* ── MAIN CONTENT ── */
+    .main { margin-left: 240px; flex: 1; padding: 32px; min-height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+    .page-sub { color: var(--muted2); font-size: 14px; margin-bottom: 28px; }
+
+    /* ── STAT CARDS ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px;
+    }
+    .stat-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .stat-val { font-size: 28px; font-weight: 800; }
+    .stat-val.orange { color: var(--orange); }
+    .stat-val.green { color: var(--green); }
+    .stat-val.blue { color: var(--blue); }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── SECTION ── */
+    .section { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 24px; margin-bottom: 20px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-title { font-size: 15px; font-weight: 700; }
+    .section-count { font-size: 12px; color: var(--muted); background: var(--bg2); padding: 3px 10px; border-radius: 100px; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 0 12px 12px; text-align: left; white-space: nowrap; }
+    td { padding: 12px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:first-child td { border-top: none; }
+    .td-name { font-weight: 600; }
+    .td-muted { color: var(--muted2); }
+    .td-small { font-size: 11px; color: var(--muted); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 6px; white-space: nowrap;
+    }
+    .badge-green { background: var(--green-dim); color: var(--green); }
+    .badge-orange { background: var(--orange-dim); color: var(--orange); }
+    .badge-red { background: var(--red-dim); color: var(--red); }
+    .badge-blue { background: var(--blue-dim); color: var(--blue); }
+    .badge-gray { background: var(--bg2); color: var(--muted2); }
+
+    /* ── SEARCH BAR ── */
+    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-input {
+      flex: 1; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 11px 16px; color: var(--text); font-size: 14px;
+      font-family: inherit; outline: none; transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--orange); }
+    .search-btn {
+      background: var(--orange); color: #fff; border: none;
+      border-radius: 12px; padding: 11px 20px; font-size: 14px; font-weight: 700;
+      font-family: inherit; cursor: pointer; white-space: nowrap; transition: opacity .2s;
+    }
+    .search-btn:hover { opacity: .9; }
+    .search-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 7px 16px; border-radius: 100px; border: 1px solid var(--border);
+      background: none; color: var(--muted2); font-size: 13px; font-weight: 500;
+      font-family: inherit; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--orange-border); color: var(--text); }
+    .filter-btn.active { background: var(--orange-dim); border-color: var(--orange-border); color: var(--orange); font-weight: 700; }
+
+    /* ── CREDITS FORM ── */
+    .credits-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; max-width: 540px; }
+    .credits-card h2 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .credits-card p { color: var(--muted2); font-size: 13px; margin-bottom: 24px; }
+    .motorista-result {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px; margin-bottom: 20px;
+    }
+    .motorista-result-info { flex: 1; }
+    .motorista-result-nome { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+    .motorista-result-email { font-size: 12px; color: var(--muted2); }
+    .motorista-credits-box { text-align: center; }
+    .motorista-credits-num { font-size: 32px; font-weight: 800; color: var(--blue); line-height: 1; }
+    .motorista-credits-lbl { font-size: 11px; color: var(--muted); }
+    .credits-inputs { display: flex; flex-direction: column; gap: 12px; }
+    .credits-inputs input {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 13px 16px; color: var(--text); font-size: 14px;
+      font-family: inherit; outline: none; transition: border-color .2s;
+    }
+    .credits-inputs input:focus { border-color: var(--orange); }
+    .btn-add-credits {
+      background: var(--orange); color: #fff; border: none;
+      border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer; margin-top: 4px; transition: opacity .2s;
+    }
+    .btn-add-credits:hover { opacity: .9; }
+    .btn-add-credits:disabled { opacity: .5; cursor: not-allowed; }
+    .credits-msg { font-size: 13px; margin-top: 12px; text-align: center; font-weight: 600; }
+    .credits-msg.ok { color: var(--green); }
+    .credits-msg.err { color: var(--red); }
+
+    /* ── LOGS ── */
+    .log-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; border-top: 1px solid var(--border);
+    }
+    .log-item:first-child { border-top: none; }
+    .log-qtd { font-size: 15px; font-weight: 700; color: var(--green); }
+    .log-info { flex: 1; padding: 0 16px; }
+    .log-uid { font-size: 11px; color: var(--muted); }
+    .log-motivo { font-size: 12px; color: var(--muted2); font-style: italic; }
+    .log-data { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    /* ── TOGGLE BUTTON ── */
+    .btn-toggle {
+      padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      font-family: inherit; cursor: pointer; border: 1px solid; transition: opacity .2s; white-space: nowrap;
+    }
+    .btn-toggle.ativo { background: var(--red-dim); border-color: rgba(239,68,68,.3); color: var(--red); }
+    .btn-toggle.bloqueado { background: var(--green-dim); border-color: rgba(34,197,94,.3); color: var(--green); }
+    .btn-toggle:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── EXCLUIR BUTTON ── */
+    .btn-excluir {
+      padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      font-family: inherit; cursor: pointer; border: 1px solid;
+      background: var(--red-dim); border-color: rgba(239,68,68,.3); color: var(--red);
+      transition: opacity .2s; white-space: nowrap;
+    }
+    .btn-excluir:hover { opacity: .8; }
+    .btn-excluir:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── RELATÓRIOS ── */
+    .rel-filters { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; }
+    .rel-field { display: flex; flex-direction: column; gap: 6px; }
+    .rel-field label { font-size: 11px; font-weight: 700; color: var(--muted2); text-transform: uppercase; letter-spacing: .8px; }
+    .rel-field input[type=date] {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 10px 14px; color: var(--text); font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .2s; color-scheme: dark;
+    }
+    .rel-field input[type=date]:focus { border-color: var(--orange); }
+    .btn-csv {
+      background: var(--bg2); border: 1px solid var(--border); color: var(--muted2);
+      border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 700;
+      font-family: inherit; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .btn-csv:hover { border-color: var(--orange-border); color: var(--orange); }
+    .rel-resumo { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; margin-bottom: 24px; }
+    .rel-mes-head { font-size: 13px; font-weight: 700; color: var(--orange); padding: 14px 12px 6px; }
+    .rel-total-row td { font-weight: 700; color: var(--text); border-top: 2px solid var(--border) !important; }
+
+    /* ── EMPTY STATE ── */
+    .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .sidebar { width: 200px; }
+      .main { margin-left: 200px; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="images/icon.png" alt="Eluus" />
+      <span>eluus</span>
+    </div>
+    <div class="login-badge">Área restrita</div>
+    <h1>Painel administrativo</h1>
+    <p>Acesso exclusivo para administradores do sistema.</p>
+    <div class="field">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="admin@eluus.app" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button type="button" class="btn-login" id="login-btn">Entrar</button>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div id="panel" hidden>
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <img src="images/icon.png" alt="Eluus" />
+      <span>eluus</span>
+      <span class="sidebar-badge">ADMIN</span>
+    </div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-tab="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" data-tab="usuarios">
+        <span class="nav-icon">👥</span> Usuários
+      </button>
+      <button class="nav-item" data-tab="corridas">
+        <span class="nav-icon">🚗</span> Corridas
+      </button>
+      <button class="nav-item" data-tab="pagamentos">
+        <span class="nav-icon">💳</span> Pagamentos
+      </button>
+      <button class="nav-item" data-tab="creditos">
+        <span class="nav-icon">⭐</span> Créditos
+      </button>
+      <button class="nav-item" data-tab="relatorios">
+        <span class="nav-icon">📈</span> Relatórios
+      </button>
+      <button class="nav-item" data-tab="denuncias">
+        <span class="nav-icon">🚨</span> Denúncias
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="admin-email-label">—</div>
+      <button class="btn-logout" id="logout-btn">Sair</button>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub">Visão geral do sistema em tempo real.</div>
+
+      <div class="stats-row" id="dash-stats">
+        <div class="stat-card"><div class="stat-label">Usuários</div><div class="stat-val blue" id="stat-usuarios">—</div></div>
+        <div class="stat-card"><div class="stat-label">Motoristas</div><div class="stat-val orange" id="stat-motoristas">—</div></div>
+        <div class="stat-card"><div class="stat-label">Passageiros</div><div class="stat-val" id="stat-passageiros">—</div></div>
+        <div class="stat-card"><div class="stat-label">Corridas</div><div class="stat-val" id="stat-corridas">—</div></div>
+        <div class="stat-card"><div class="stat-label">Receita total</div><div class="stat-val green" id="stat-receita">—</div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Últimas corridas</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Origem → Destino</th><th>Status</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody id="dash-corridas-body"><tr><td colspan="4" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Últimos pagamentos</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Pacote</th><th>Método</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead>
+            <tbody id="dash-pag-body"><tr><td colspan="5" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- USUÁRIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="page-title">Usuários</div>
+      <div class="page-sub">Todos os usuários cadastrados na plataforma.</div>
+
+      <div class="search-row">
+        <input class="search-input" id="user-search" type="email" placeholder="Buscar por e-mail…" />
+        <button class="search-btn" id="user-search-btn">Buscar</button>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="todos">Todos</button>
+        <button class="filter-btn" data-filter="motorista">Motoristas</button>
+        <button class="filter-btn" data-filter="passageiro">Passageiros</button>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Usuários</span>
+          <span class="section-count" id="user-count">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Telefone</th><th>CNH</th><th>Corridas</th><th>Créditos</th><th>Status</th><th>Ação</th><th>Excluir</th></tr></thead>
+            <tbody id="usuarios-body"><tr><td colspan="10" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CORRIDAS -->
+    <div class="page" id="page-corridas">
+      <div class="page-title">Corridas</div>
+      <div class="page-sub">Histórico de todas as corridas realizadas.</div>
+
+      <div class="filter-row" id="corridas-filter">
+        <button class="filter-btn active" data-filter="todas">Todas</button>
+        <button class="filter-btn" data-filter="pendente">Pendentes</button>
+        <button class="filter-btn" data-filter="aceita">Aceitas</button>
+        <button class="filter-btn" data-filter="concluida">Concluídas</button>
+        <button class="filter-btn" data-filter="cancelada">Canceladas</button>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Corridas</span>
+          <span class="section-count" id="corridas-count">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Origem</th><th>Destino</th><th>Motorista</th><th>Passageiro</th><th>Status</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody id="corridas-body"><tr><td colspan="7" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGAMENTOS -->
+    <div class="page" id="page-pagamentos">
+      <div class="page-title">Pagamentos</div>
+      <div class="page-sub">Todos os pagamentos e recargas de crédito.</div>
+
+      <div class="filter-row" id="pag-filter">
+        <button class="filter-btn active" data-filter="todos">Todos</button>
+        <button class="filter-btn" data-filter="pago">Pagos</button>
+        <button class="filter-btn" data-filter="pendente">Pendentes</button>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Pagamentos</span>
+          <span class="section-count" id="pag-count">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Pacote</th><th>Corridas</th><th>Método</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead>
+            <tbody id="pagamentos-body"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRÉDITOS -->
+    <div class="page" id="page-creditos">
+      <div class="page-title">Créditos</div>
+      <div class="page-sub">Adicione créditos manualmente para um motorista.</div>
+
+      <div class="credits-card">
+        <h2>Adicionar créditos</h2>
+        <p>Busque o motorista pelo e-mail e defina a quantidade de créditos a adicionar.</p>
+
+        <div class="search-row">
+          <input class="search-input" id="cred-email" type="email" placeholder="E-mail do motorista…" />
+          <button class="search-btn" id="cred-buscar-btn">Buscar</button>
+        </div>
+
+        <div id="motorista-result" hidden>
+          <div class="motorista-result">
+            <div class="motorista-result-info">
+              <div class="motorista-result-nome" id="cred-nome">—</div>
+              <div class="motorista-result-email" id="cred-email-label">—</div>
+            </div>
+            <div class="motorista-credits-box">
+              <div class="motorista-credits-num" id="cred-atual">0</div>
+              <div class="motorista-credits-lbl">créditos</div>
+            </div>
+          </div>
+          <div class="credits-inputs">
+            <input type="number" id="cred-qtd" placeholder="Quantidade de créditos" min="1" />
+            <input type="text" id="cred-motivo" placeholder="Motivo (opcional)" />
+            <button class="btn-add-credits" id="cred-add-btn">Adicionar créditos</button>
+          </div>
+          <div class="credits-msg" id="cred-msg"></div>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top: 20px;">
+        <div class="section-head"><span class="section-title">Últimas adições manuais</span></div>
+        <div id="logs-body"><div class="empty">Carregando…</div></div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div class="page" id="page-relatorios">
+      <div class="page-title">Relatórios de Faturamento</div>
+      <div class="page-sub">Receita por período com exportação CSV.</div>
+
+      <div class="rel-filters">
+        <div class="rel-field">
+          <label>De</label>
+          <input type="date" id="rel-de" />
+        </div>
+        <div class="rel-field">
+          <label>Até</label>
+          <input type="date" id="rel-ate" />
+        </div>
+        <button type="button" class="search-btn" id="rel-filtrar-btn">Filtrar</button>
+        <button type="button" class="btn-csv" id="rel-csv-btn">⬇ Exportar CSV</button>
+      </div>
+
+      <div class="rel-resumo">
+        <div class="stat-card"><div class="stat-label">Receita (pago)</div><div class="stat-val green" id="rel-receita">—</div></div>
+        <div class="stat-card"><div class="stat-label">Transações</div><div class="stat-val blue" id="rel-qtd">—</div></div>
+        <div class="stat-card"><div class="stat-label">Ticket médio</div><div class="stat-val" id="rel-ticket">—</div></div>
+        <div class="stat-card"><div class="stat-label">Apple IAP</div><div class="stat-val orange" id="rel-apple">—</div></div>
+        <div class="stat-card"><div class="stat-label">PayPal</div><div class="stat-val" id="rel-paypal">—</div></div>
+        <div class="stat-card"><div class="stat-label">Pix</div><div class="stat-val" id="rel-pix">—</div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Detalhamento por mês</span>
+          <span class="section-count" id="rel-count">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Usuário</th><th>Pacote</th><th>Método</th><th>Valor</th><th>Status</th></tr></thead>
+            <tbody id="relatorios-body"><tr><td colspan="6" class="empty">Selecione um período e clique em Filtrar.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DENÚNCIAS -->
+    <div class="page" id="page-denuncias">
+      <div class="page-title">Denúncias</div>
+      <div class="page-sub">Todas as denúncias registradas na plataforma.</div>
+      <div class="section">
+        <div class="section-head">
+          <span class="section-title">Denúncias</span>
+          <span class="section-count" id="denuncias-count">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Denunciante</th><th>Denunciado</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Data</th></tr></thead>
+            <tbody id="denuncias-body"><tr><td colspan="6" class="empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+import { getFirestore, collection, doc, getDoc, getDocs, updateDoc, deleteDoc, query, orderBy, limit, where, onSnapshot }
+  from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+import { getFunctions, httpsCallable }
+  from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js';
+
+const app = initializeApp({
+  apiKey: "AIzaSyBvG4vKKfzER4nckH85sjtoAyyIU3uGMb0",
+  authDomain: "voucom-285e0.firebaseapp.com",
+  projectId: "voucom-285e0",
+  storageBucket: "voucom-285e0.firebasestorage.app",
+  messagingSenderId: "446769198236",
+  appId: "1:446769198236:web:ddcda470b13bf894cae959"
+});
+
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const fns  = getFunctions(app);
+
+// ── UI state helpers ──────────────────────────────────────────────────────────
+function showLogin(err) {
+  $('login').hidden = false;
+  $('panel').hidden = true;
+  if (err) $('login-err').textContent = err;
+  $('login-btn').textContent = 'Entrar';
+  $('login-btn').disabled = false;
+}
+function showPanel(email) {
+  $('login').hidden = true;
+  $('panel').hidden = false;
+  $('admin-email-label').textContent = email;
+}
+async function checkAdmin(user) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Firestore não respondeu em 10s. Tente: voucom-285e0.web.app/admin')), 10000)
+  );
+  const snap = await Promise.race([getDoc(doc(db, 'usuarios', user.uid)), timeout]);
+  if (!snap.exists() || snap.data().tipo !== 'admin') {
+    await signOut(auth).catch(() => {});
+    const msg = snap.exists()
+      ? 'Acesso negado: usuário não é administrador.'
+      : 'Perfil não encontrado (crie usuarios/' + user.uid + ' com tipo:"admin").';
+    showLogin(msg);
+    return false;
+  }
+  return true;
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = (ts) => {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+};
+const fmtBRL = v => v != null ? `R$ ${Number(v).toFixed(2).replace('.',',')}` : '—';
+const statusBadge = s => {
+  const m = { pendente:'badge-orange', aceita:'badge-blue', em_andamento:'badge-blue', concluida:'badge-green', cancelada:'badge-red', pago:'badge-green' };
+  const t = { pendente:'Pendente', aceita:'Aceita', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada', pago:'Pago' };
+  return `<span class="badge ${m[s]||'badge-gray'}">${t[s]||s}</span>`;
+};
+const tipoBadge = t => {
+  const m = { motorista:'badge-orange', passageiro:'badge-blue', admin:'badge-red' };
+  return `<span class="badge ${m[t]||'badge-gray'}">${t}</span>`;
+};
+const metodoBadge = m => {
+  const mp = { apple_iap:'🍎 Apple', paypal:'🅿️ PayPal', pix:'Pix 🏦' };
+  return `<span class="badge badge-gray">${mp[m]||m||'Pix 🏦'}</span>`;
+};
+
+// ── state ─────────────────────────────────────────────────────────────────────
+let todosUsuarios = [], todasCorridas = [], todosPagamentos = [], todasDenuncias = [];
+let userFiltro = 'todos', corridaFiltro = 'todas', pagFiltro = 'todos';
+let motoristaEncontrado = null;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+// Se já tiver sessão válida em cache, vai direto pro painel
+onAuthStateChanged(auth, async user => {
+  if (!user) return;
+  if (!$('panel').hidden) return; // já no painel
+  try {
+    const ok = await checkAdmin(user);
+    if (ok) { showPanel(user.email); carregarTudo(); }
+  } catch (e) {
+    await signOut(auth).catch(() => {});
+  }
+});
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = $('login-email').value.trim();
+  const senha = $('login-senha').value;
+  if (!email || !senha) return;
+  $('login-btn').disabled = true;
+  $('login-btn').textContent = 'Verificando…';
+  $('login-err').textContent = '';
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, senha);
+    const ok = await checkAdmin(cred.user);
+    if (ok) { showPanel(cred.user.email); carregarTudo(); }
+  } catch (e) {
+    showLogin(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'
+      ? 'E-mail ou senha incorretos.'
+      : 'Erro: ' + e.message);
+  }
+}
+
+$('login-btn').addEventListener('click', doLogin);
+$('login-senha').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+$('logout-btn').addEventListener('click', () => signOut(auth).then(() => showLogin()));
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $(`page-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ── CARREGAMENTO ──────────────────────────────────────────────────────────────
+async function carregarTudo() {
+  await Promise.all([carregarUsuarios(), carregarCorridas(), carregarPagamentos(), carregarDenuncias()]);
+  atualizarDashboard();
+  carregarLogs();
+}
+
+async function carregarUsuarios() {
+  const snap = await getDocs(collection(db, 'usuarios'));
+  todosUsuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderUsuarios();
+  $('stat-usuarios').textContent  = todosUsuarios.length;
+  $('stat-motoristas').textContent = todosUsuarios.filter(u => u.tipo === 'motorista').length;
+  $('stat-passageiros').textContent = todosUsuarios.filter(u => u.tipo === 'passageiro').length;
+}
+
+async function carregarCorridas() {
+  try {
+    const snap = await getDocs(query(collection(db, 'corridas'), orderBy('criadoEm', 'desc'), limit(200)));
+    todasCorridas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    $('stat-corridas').textContent = todasCorridas.length;
+    renderCorridas();
+  } catch { $('stat-corridas').textContent = '—'; }
+}
+
+async function carregarPagamentos() {
+  try {
+    const snap = await getDocs(query(collection(db, 'pagamentos'), orderBy('criadoEm', 'desc'), limit(200)));
+    todosPagamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const receita = todosPagamentos.filter(p => p.status === 'pago').reduce((s, p) => s + (p.valor || 0), 0);
+    $('stat-receita').textContent = fmtBRL(receita);
+    renderPagamentos();
+  } catch { $('stat-receita').textContent = '—'; }
+}
+
+function carregarLogs() {
+  const q = query(collection(db, 'adminLogs'), orderBy('criadoEm', 'desc'), limit(20));
+  onSnapshot(q, snap => {
+    const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const el = $('logs-body');
+    if (!logs.length) { el.innerHTML = '<div class="empty">Nenhuma adição manual registrada.</div>'; return; }
+    el.innerHTML = logs.map(l => `
+      <div class="log-item">
+        <span class="log-qtd">+${l.quantidade} créditos</span>
+        <div class="log-info">
+          <div class="log-uid">${l.targetUid || '—'}</div>
+          ${l.motivo ? `<div class="log-motivo">${l.motivo}</div>` : ''}
+        </div>
+        <span class="log-data">${fmt(l.criadoEm)}</span>
+      </div>`).join('');
+  });
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function atualizarDashboard() {
+  const ultCorridas = [...todasCorridas].slice(0, 8);
+  $('dash-corridas-body').innerHTML = !ultCorridas.length
+    ? '<tr><td colspan="4" class="empty">Nenhuma corrida ainda.</td></tr>'
+    : ultCorridas.map(c => `<tr>
+        <td class="td-name">${c.origem ? c.origem.split(',')[0] : '—'}</td>
+        <td class="td-muted">${c.destino ? c.destino.split(',')[0] : '—'}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td class="td-small">${fmtBRL(c.valor)}</td>
+        <td class="td-small">${fmt(c.criadoEm)}</td>
+      </tr>`).join('');
+
+  const ultPag = [...todosPagamentos].slice(0, 8);
+  $('dash-pag-body').innerHTML = !ultPag.length
+    ? '<tr><td colspan="5" class="empty">Nenhum pagamento ainda.</td></tr>'
+    : ultPag.map(p => `<tr>
+        <td class="td-name">${p.pacote ? p.pacote + ' corridas' : '—'}</td>
+        <td>${metodoBadge(p.metodo)}</td>
+        <td>${fmtBRL(p.valor)}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td class="td-small">${fmt(p.criadoEm)}</td>
+      </tr>`).join('');
+}
+
+// ── USUÁRIOS ──────────────────────────────────────────────────────────────────
+function renderUsuarios(lista) {
+  const filtrado = (lista || todosUsuarios).filter(u =>
+    userFiltro === 'todos' || u.tipo === userFiltro
+  );
+  $('user-count').textContent = filtrado.length;
+  $('usuarios-body').innerHTML = !filtrado.length
+    ? '<tr><td colspan="10" class="empty">Nenhum usuário encontrado.</td></tr>'
+    : filtrado.map(u => `<tr>
+        <td class="td-name">${u.nome || '—'}</td>
+        <td class="td-muted">${u.email || '—'}</td>
+        <td>${tipoBadge(u.tipo)}</td>
+        <td class="td-small">${u.telefone || '—'}</td>
+        <td class="td-small">${u.cnh || '—'}</td>
+        <td>${u.corridas || 0}</td>
+        <td>${u.creditos ?? '—'}</td>
+        <td>${u.bloqueado
+          ? '<span class="badge badge-red">Bloqueado</span>'
+          : u.online ? '<span class="badge badge-green">Online</span>' : '<span class="badge badge-gray">Offline</span>'}</td>
+        <td><button type="button" class="btn-toggle ${u.bloqueado ? 'bloqueado' : 'ativo'}"
+          data-uid="${u.id}" data-bloqueado="${!!u.bloqueado}">
+          ${u.bloqueado ? 'Ativar' : 'Bloquear'}
+        </button></td>
+        <td><button type="button" class="btn-excluir" data-uid="${u.id}" data-nome="${(u.nome||'').replace(/"/g,'&quot;')}">
+          Excluir
+        </button></td>
+      </tr>`).join('');
+
+  $('usuarios-body').querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const bloqueado = btn.dataset.bloqueado === 'true';
+      btn.disabled = true;
+      try {
+        await updateDoc(doc(db, 'usuarios', uid), { bloqueado: !bloqueado });
+        const u = todosUsuarios.find(x => x.id === uid);
+        if (u) u.bloqueado = !bloqueado;
+        renderUsuarios();
+      } catch (e) { alert('Erro: ' + e.message); btn.disabled = false; }
+    });
+  });
+
+  $('usuarios-body').querySelectorAll('.btn-excluir').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const nome = btn.dataset.nome || uid;
+      if (!confirm(`Excluir permanentemente o usuário "${nome}"? Esta ação não pode ser desfeita.`)) return;
+      btn.disabled = true;
+      try {
+        const fn = httpsCallable(fns, 'adminExcluirUsuario');
+        await fn({ targetUid: uid });
+        todosUsuarios = todosUsuarios.filter(x => x.id !== uid);
+        renderUsuarios();
+      } catch (e) { alert('Erro ao excluir: ' + e.message); btn.disabled = false; }
+    });
+  });
+}
+
+document.querySelectorAll('#page-usuarios .filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#page-usuarios .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    userFiltro = btn.dataset.filter;
+    renderUsuarios();
+  });
+});
+
+$('user-search-btn').addEventListener('click', async () => {
+  const email = $('user-search').value.trim().toLowerCase();
+  if (!email) { renderUsuarios(); return; }
+  const snap = await getDocs(query(collection(db, 'usuarios'), where('email', '==', email)));
+  renderUsuarios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+});
+
+$('user-search').addEventListener('keydown', e => { if (e.key === 'Enter') $('user-search-btn').click(); });
+
+// ── CORRIDAS ──────────────────────────────────────────────────────────────────
+function renderCorridas() {
+  const filtrado = todasCorridas.filter(c =>
+    corridaFiltro === 'todas' || c.status === corridaFiltro
+  );
+  $('corridas-count').textContent = filtrado.length;
+
+  const nomeMotorista = uid => { const u = todosUsuarios.find(u => u.id === uid); return u?.nome || uid?.slice(0,8) || '—'; };
+  const nomePassageiro = uid => { const u = todosUsuarios.find(u => u.id === uid); return u?.nome || uid?.slice(0,8) || '—'; };
+
+  $('corridas-body').innerHTML = !filtrado.length
+    ? '<tr><td colspan="7" class="empty">Nenhuma corrida encontrada.</td></tr>'
+    : filtrado.map(c => `<tr>
+        <td class="td-name">${c.origem ? c.origem.split(',')[0] : '—'}</td>
+        <td class="td-muted">${c.destino ? c.destino.split(',')[0] : '—'}</td>
+        <td class="td-small">${nomeMotorista(c.motoristaId)}</td>
+        <td class="td-small">${nomePassageiro(c.passageiroId)}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${fmtBRL(c.valor)}</td>
+        <td class="td-small">${fmt(c.criadoEm)}</td>
+      </tr>`).join('');
+}
+
+document.querySelectorAll('#corridas-filter .filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#corridas-filter .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    corridaFiltro = btn.dataset.filter;
+    renderCorridas();
+  });
+});
+
+// ── PAGAMENTOS ────────────────────────────────────────────────────────────────
+function renderPagamentos() {
+  const filtrado = todosPagamentos.filter(p =>
+    pagFiltro === 'todos' || p.status === pagFiltro
+  );
+  $('pag-count').textContent = filtrado.length;
+  $('pagamentos-body').innerHTML = !filtrado.length
+    ? '<tr><td colspan="6" class="empty">Nenhum pagamento encontrado.</td></tr>'
+    : filtrado.map(p => `<tr>
+        <td class="td-name">${p.pacote ? p.pacote + ' corridas' : '—'}</td>
+        <td>${p.corridas || '—'}</td>
+        <td>${metodoBadge(p.metodo)}</td>
+        <td>${fmtBRL(p.valor)}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td class="td-small">${fmt(p.criadoEm)}</td>
+      </tr>`).join('');
+}
+
+document.querySelectorAll('#pag-filter .filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#pag-filter .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pagFiltro = btn.dataset.filter;
+    renderPagamentos();
+  });
+});
+
+// ── CRÉDITOS ──────────────────────────────────────────────────────────────────
+$('cred-buscar-btn').addEventListener('click', async () => {
+  const email = $('cred-email').value.trim().toLowerCase();
+  if (!email) return;
+  $('cred-buscar-btn').disabled = true;
+  $('motorista-result').hidden = true;
+  $('cred-msg').textContent = '';
+  try {
+    const snap = await getDocs(query(collection(db, 'usuarios'), where('email', '==', email)));
+    if (snap.empty) { alert('Nenhum usuário com este e-mail.'); return; }
+    const data = snap.docs[0].data();
+    motoristaEncontrado = { id: snap.docs[0].id, ...data };
+    $('cred-nome').textContent = data.nome || '—';
+    $('cred-email-label').textContent = data.email;
+    $('cred-atual').textContent = data.creditos ?? 0;
+    $('motorista-result').hidden = false;
+  } catch (e) { alert('Erro ao buscar: ' + e.message); }
+  finally { $('cred-buscar-btn').disabled = false; }
+});
+
+$('cred-email').addEventListener('keydown', e => { if (e.key === 'Enter') $('cred-buscar-btn').click(); });
+
+// ── RELATÓRIOS ────────────────────────────────────────────────────────────────
+let pagsFiltrados = [];
+
+function renderRelatorios() {
+  const de  = $('rel-de').value  ? new Date($('rel-de').value  + 'T00:00:00') : null;
+  const ate = $('rel-ate').value ? new Date($('rel-ate').value + 'T23:59:59') : null;
+
+  pagsFiltrados = todosPagamentos.filter(p => {
+    if (!p.criadoEm) return false;
+    const d = p.criadoEm.toDate ? p.criadoEm.toDate() : new Date(p.criadoEm);
+    if (de  && d < de)  return false;
+    if (ate && d > ate) return false;
+    return true;
+  });
+
+  const pagos = pagsFiltrados.filter(p => p.status === 'pago');
+  const receita = pagos.reduce((s, p) => s + (p.valor || 0), 0);
+  const ticket  = pagos.length ? receita / pagos.length : 0;
+
+  $('rel-receita').textContent = fmtBRL(receita);
+  $('rel-qtd').textContent     = pagos.length;
+  $('rel-ticket').textContent  = fmtBRL(ticket);
+  $('rel-apple').textContent   = fmtBRL(pagos.filter(p => p.metodo === 'apple_iap').reduce((s, p) => s + (p.valor || 0), 0));
+  $('rel-paypal').textContent  = fmtBRL(pagos.filter(p => p.metodo === 'paypal').reduce((s, p) => s + (p.valor || 0), 0));
+  $('rel-pix').textContent     = fmtBRL(pagos.filter(p => !p.metodo || p.metodo === 'pix').reduce((s, p) => s + (p.valor || 0), 0));
+  $('rel-count').textContent   = pagsFiltrados.length;
+
+  if (!pagsFiltrados.length) {
+    $('relatorios-body').innerHTML = '<tr><td colspan="6" class="empty">Nenhum pagamento no período.</td></tr>';
+    return;
+  }
+
+  // agrupar por mês
+  const porMes = {};
+  pagsFiltrados.forEach(p => {
+    const d = p.criadoEm.toDate ? p.criadoEm.toDate() : new Date(p.criadoEm);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if (!porMes[key]) porMes[key] = [];
+    porMes[key].push(p);
+  });
+
+  const nomeUsuario = uid => { const u = todosUsuarios.find(u => u.id === uid); return u?.nome || uid?.slice(0,8) || '—'; };
+
+  let html = '';
+  Object.keys(porMes).sort().reverse().forEach(mes => {
+    const items = porMes[mes];
+    const [ano, m] = mes.split('-');
+    const nomeMes = new Date(ano, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const totalMes = items.filter(p => p.status === 'pago').reduce((s, p) => s + (p.valor || 0), 0);
+    html += `<tr><td colspan="6" class="rel-mes-head">${nomeMes} — ${fmtBRL(totalMes)} pagos</td></tr>`;
+    items.forEach(p => {
+      html += `<tr>
+        <td class="td-small">${fmt(p.criadoEm)}</td>
+        <td class="td-muted">${nomeUsuario(p.uid)}</td>
+        <td>${p.pacote ? p.pacote + ' corridas' : '—'}</td>
+        <td>${metodoBadge(p.metodo)}</td>
+        <td>${fmtBRL(p.valor)}</td>
+        <td>${statusBadge(p.status)}</td>
+      </tr>`;
+    });
+    html += `<tr class="rel-total-row">
+      <td colspan="4" style="text-align:right;font-size:12px;color:var(--muted)">Total do mês</td>
+      <td>${fmtBRL(totalMes)}</td><td></td>
+    </tr>`;
+  });
+  $('relatorios-body').innerHTML = html;
+}
+
+function exportarCSV() {
+  if (!pagsFiltrados.length) { alert('Nenhum dado para exportar.'); return; }
+  const nomeUsuario = uid => { const u = todosUsuarios.find(u => u.id === uid); return u?.nome || uid || ''; };
+  const linhas = [['Data','Usuário','Pacote','Método','Valor','Status']];
+  pagsFiltrados.forEach(p => {
+    const d = p.criadoEm?.toDate ? p.criadoEm.toDate() : new Date(p.criadoEm || 0);
+    linhas.push([
+      d.toLocaleDateString('pt-BR'),
+      nomeUsuario(p.uid),
+      p.pacote ? p.pacote + ' corridas' : '',
+      p.metodo || 'pix',
+      (p.valor || 0).toFixed(2).replace('.', ','),
+      p.status || ''
+    ]);
+  });
+  const csv = linhas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'faturamento.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// definir período padrão: mês atual
+(function() {
+  const hoje = new Date();
+  const y = hoje.getFullYear(), m = String(hoje.getMonth() + 1).padStart(2, '0');
+  $('rel-de').value  = `${y}-${m}-01`;
+  $('rel-ate').value = hoje.toISOString().slice(0, 10);
+})();
+
+$('rel-filtrar-btn').addEventListener('click', renderRelatorios);
+$('rel-csv-btn').addEventListener('click', exportarCSV);
+
+// ── DENÚNCIAS ──────────────────────────────────────────────────────────────
+async function carregarDenuncias() {
+  try {
+    const snap = await getDocs(query(collection(db, 'denuncias'), orderBy('criadoEm', 'desc'), limit(200)));
+    todasDenuncias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderDenuncias();
+  } catch (e) { console.error('Erro ao carregar denúncias:', e); }
+}
+
+function renderDenuncias() {
+  $('denuncias-count').textContent = todasDenuncias.length;
+  const nomeUsuario = uid => { const u = todosUsuarios.find(u => u.id === uid); return u?.nome || uid?.slice(0,8) || '—'; };
+  $('denuncias-body').innerHTML = !todasDenuncias.length
+    ? '<tr><td colspan="6" class="empty">Nenhuma denúncia registrada.</td></tr>'
+    : todasDenuncias.map(d => `<tr>
+        <td class="td-name">${nomeUsuario(d.denuncianteId)}</td>
+        <td class="td-muted">${d.denunciadoNome || nomeUsuario(d.denunciadoId)}</td>
+        <td><span class="badge ${d.tipo === 'passageiro' ? 'badge-blue' : 'badge-orange'}">${d.tipo || '—'}</span></td>
+        <td class="td-small">${d.categoria || '—'}</td>
+        <td class="td-muted" style="max-width:200px;white-space:normal">${d.descricao || '—'}</td>
+        <td class="td-small">${fmt(d.criadoEm)}</td>
+      </tr>`).join('');
+}
+
+// ── CRÉDITOS ──────────────────────────────────────────────────────────────────
+$('cred-add-btn').addEventListener('click', async () => {
+  if (!motoristaEncontrado) return;
+  const qtd = parseInt($('cred-qtd').value);
+  if (!qtd || qtd <= 0) { alert('Informe uma quantidade válida.'); return; }
+  $('cred-add-btn').disabled = true;
+  $('cred-msg').className = 'credits-msg';
+  $('cred-msg').textContent = 'Adicionando…';
+  try {
+    const fn = httpsCallable(fns, 'adicionarCreditosAdmin');
+    await fn({ targetUid: motoristaEncontrado.id, quantidade: qtd, motivo: $('cred-motivo').value.trim() });
+    const novoSaldo = (motoristaEncontrado.creditos || 0) + qtd;
+    motoristaEncontrado.creditos = novoSaldo;
+    $('cred-atual').textContent = novoSaldo;
+    $('cred-qtd').value = '';
+    $('cred-motivo').value = '';
+    $('cred-msg').className = 'credits-msg ok';
+    $('cred-msg').textContent = `✓ ${qtd} créditos adicionados com sucesso!`;
+  } catch (e) {
+    $('cred-msg').className = 'credits-msg err';
+    $('cred-msg').textContent = 'Erro: ' + (e.message || 'tente novamente');
+  } finally { $('cred-add-btn').disabled = false; }
+});
+</script>
+</body>
+</html>

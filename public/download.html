@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Download Eluus</title>
+  <meta name="description" content="Download Eluus — private transport with people you trust. Available for Android and iOS." />
+  <meta property="og:title" content="Download Eluus" />
+  <meta property="og:description" content="Private transport with people you trust. Available for Android and iOS." />
+  <meta property="og:image" content="images/icon.png" />
+  <link rel="icon" type="image/png" href="images/icon.png" />
+  <link rel="apple-touch-icon" href="images/icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f97316;
+      --orange-light: #fb923c;
+      --orange-dim: rgba(249,115,22,.12);
+      --bg: #0a0d12;
+      --bg2: #0f1318;
+      --card: #161c25;
+      --border: rgba(255,255,255,.06);
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 32px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* glow de fundo */
+    .bg-glow {
+      position: fixed;
+      top: -160px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(249,115,22,.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 48px 40px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      object-fit: cover;
+    }
+    .logo-name {
+      font-size: 26px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: -1px;
+    }
+
+    .headline {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .headline span { color: var(--orange); }
+
+    .sub {
+      font-size: .95rem;
+      color: var(--muted2);
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+
+    /* ── botões das stores ── */
+    .store-btns {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .store-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 22px;
+      text-decoration: none;
+      min-width: 180px;
+      transition: border-color .2s, transform .15s, background .2s;
+      flex: 1;
+    }
+    .store-btn:hover {
+      border-color: rgba(249,115,22,.45);
+      background: rgba(249,115,22,.06);
+      transform: translateY(-3px);
+    }
+    .store-btn:active { transform: translateY(0); }
+
+    .store-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+    .store-text { text-align: left; }
+    .store-text small {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .store-text strong {
+      display: block;
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    /* ── tela de redirect ── */
+    .redirect-view { display: none; }
+    .redirect-view.active { display: block; }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .redirect-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .redirect-sub {
+      font-size: .9rem;
+      color: var(--muted2);
+      margin-bottom: 28px;
+    }
+    .redirect-link {
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .redirect-link a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+    .redirect-link a:hover { text-decoration: underline; }
+
+    /* ── tela desktop ── */
+    .desktop-view { display: none; }
+    .desktop-view.active { display: block; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 28px 0 0;
+      color: var(--muted);
+      font-size: .75rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    footer-note {
+      display: block;
+      margin-top: 28px;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 440px) {
+      .card { padding: 36px 24px; }
+      .store-btns { flex-direction: column; }
+      .store-btn { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="card">
+  <div class="logo-wrap">
+    <img src="images/icon.png" class="logo-icon" alt="Eluus" />
+    <span class="logo-name">eluus</span>
+  </div>
+
+  <!-- tela: redirect mobile -->
+  <div class="redirect-view" id="redirect-view">
+    <div class="spinner"></div>
+    <div class="redirect-title" id="redirect-title">Opening the store…</div>
+    <div class="redirect-sub" id="redirect-sub">You will be redirected in a moment.</div>
+    <div class="redirect-link" id="redirect-link"></div>
+  </div>
+
+  <!-- tela: desktop (dois botões) -->
+  <div class="desktop-view" id="desktop-view">
+    <h1 class="headline">Download <span>Eluus</span></h1>
+    <p class="sub" id="desktop-sub">Private transport with people you trust.<br>Available for Android and iOS.</p>
+    <div class="store-btns">
+      <a href="https://play.google.com/store/apps/details?id=app.eluus.app"
+         target="_blank" rel="noopener" class="store-btn" id="btn-android">
+        <div class="store-icon"><i class="fab fa-google-play" style="color:#01875f;"></i></div>
+        <div class="store-text">
+          <small id="android-small">Get it on</small>
+          <strong>Google Play</strong>
+        </div>
+      </a>
+      <a href="https://apps.apple.com/us/app/eluus/id6769097819"
+         target="_blank" rel="noopener" class="store-btn" id="btn-ios">
+        <div class="store-icon"><i class="fab fa-apple" style="color:#f1f5f9;"></i></div>
+        <div class="store-text">
+          <small id="ios-small">Download on the</small>
+          <strong>App Store</strong>
+        </div>
+      </a>
+    </div>
+    <div class="divider">conexões que te levam</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  var isIOS     = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  var isAndroid = /Android/.test(ua);
+
+  var STORE_ANDROID = 'https://play.google.com/store/apps/details?id=app.eluus.app';
+  var STORE_IOS     = 'https://apps.apple.com/us/app/eluus/id6769097819';
+
+  /* detecção de idioma */
+  var lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+  var L = lang.startsWith('pt') ? 'pt' : lang.startsWith('es') ? 'es' : 'en';
+
+  var copy = {
+    en: {
+      redirectTitle: { android: 'Opening Google Play…', ios: 'Opening App Store…' },
+      redirectSub:   'You will be redirected in a moment.',
+      redirectLink:  'Not redirected? <a href="{url}">Tap here</a>',
+      desktopSub:    'Private transport with people you trust.<br>Available for Android and iOS.',
+      androidSmall:  'Get it on',
+      iosSmall:      'Download on the',
+    },
+    pt: {
+      redirectTitle: { android: 'Abrindo Google Play…', ios: 'Abrindo App Store…' },
+      redirectSub:   'Você será redirecionado em instantes.',
+      redirectLink:  'Não redirecionou? <a href="{url}">Toque aqui</a>',
+      desktopSub:    'Transporte privado com pessoas que você confia.<br>Disponível para Android e iOS.',
+      androidSmall:  'Disponível no',
+      iosSmall:      'Baixar na',
+    },
+    es: {
+      redirectTitle: { android: 'Abriendo Google Play…', ios: 'Abriendo App Store…' },
+      redirectSub:   'Serás redirigido en un momento.',
+      redirectLink:  '¿No redirigió? <a href="{url}">Toca aquí</a>',
+      desktopSub:    'Transporte privado con personas de confianza.<br>Disponible para Android e iOS.',
+      androidSmall:  'Disponible en',
+      iosSmall:      'Descargar en el',
+    }
+  };
+
+  var t = copy[L];
+
+  if (isIOS || isAndroid) {
+    var url   = isIOS ? STORE_IOS : STORE_ANDROID;
+    var platform = isIOS ? 'ios' : 'android';
+
+    document.getElementById('redirect-view').classList.add('active');
+    document.getElementById('redirect-title').textContent = t.redirectTitle[platform];
+    document.getElementById('redirect-sub').textContent   = t.redirectSub;
+    document.getElementById('redirect-link').innerHTML    = t.redirectLink.replace('{url}', url);
+
+    setTimeout(function () { window.location.href = url; }, 800);
+
+  } else {
+    document.getElementById('desktop-view').classList.add('active');
+    document.getElementById('desktop-sub').innerHTML    = t.desktopSub;
+    document.getElementById('android-small').textContent = t.androidSmall;
+    document.getElementById('ios-small').textContent     = t.iosSmall;
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import axios, { AxiosError } from 'axios';
 
 admin.initializeApp();
@@ -334,6 +335,69 @@ export const criarPedidoPayPal = onCall(
   }
 );
 
+// ── PayPal: captura ordem após aprovação do usuário ───────────
+export const capturarPedidoPayPal = onCall(
+  { secrets: [paypalClientId, paypalClientSecret] },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Não autenticado');
+    const { orderId } = request.data as { orderId: string };
+    if (!orderId) throw new HttpsError('invalid-argument', 'orderId ausente');
+
+    const clientId = paypalClientId.value().replace(/[^\x21-\x7E]/g, '').trim();
+    const clientSecret = paypalClientSecret.value().replace(/[^\x21-\x7E]/g, '').trim();
+
+    try {
+      const tokenRes = await axios.post(
+        `${PAYPAL_BASE}/v1/oauth2/token`,
+        'grant_type=client_credentials',
+        {
+          auth: { username: clientId, password: clientSecret },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        }
+      );
+      const accessToken = tokenRes.data.access_token;
+
+      const captureRes = await axios.post(
+        `${PAYPAL_BASE}/v2/checkout/orders/${orderId}/capture`,
+        {},
+        { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
+      );
+
+      if (captureRes.data.status !== 'COMPLETED') {
+        throw new HttpsError('internal', `Captura não completada: ${captureRes.data.status}`);
+      }
+
+      const pedidosSnap = await db.collection('pagamentos')
+        .where('orderId', '==', orderId)
+        .where('status', '==', 'pendente')
+        .limit(1)
+        .get();
+
+      if (pedidosSnap.empty) return { success: true, alreadyProcessed: true };
+
+      const pedido = pedidosSnap.docs[0];
+      const pedidoData = pedido.data();
+
+      const batch = db.batch();
+      batch.update(pedido.ref, { status: 'pago', pagoEm: admin.firestore.FieldValue.serverTimestamp() });
+      batch.update(db.collection('usuarios').doc(pedidoData.uid as string), {
+        creditos: admin.firestore.FieldValue.increment(pedidoData.corridas as number),
+      });
+      await batch.commit();
+
+      console.log('[capturarPedidoPayPal] Creditado:', pedidoData.corridas, 'corridas ao uid:', pedidoData.uid);
+      return { success: true };
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      if ((error as AxiosError).isAxiosError) {
+        const axErr = error as AxiosError<any>;
+        throw new HttpsError('internal', `PayPal ${axErr.response?.status}: ${JSON.stringify(axErr.response?.data)}`);
+      }
+      throw new HttpsError('internal', error?.message || String(error));
+    }
+  }
+);
+
 // ── PayPal Webhook: confirma pagamento e credita corridas ──────
 export const webhookPayPal = onRequest(
   { secrets: [paypalClientId, paypalClientSecret, paypalWebhookId] },
@@ -408,3 +472,60 @@ export const webhookPayPal = onRequest(
     }
   }
 );
+
+// ── Trigger: ban automático após 2 denúncias únicas de motoristas ─────────
+export const verificarBanPassageiro = onDocumentCreated(
+  'denuncias/{denunciaId}',
+  async (event) => {
+    const denuncia = event.data?.data();
+    if (!denuncia) return;
+
+    if (denuncia.tipo !== 'passageiro' || !denuncia.denunciadoId) return;
+
+    const passageiroId = denuncia.denunciadoId as string;
+
+    const passageiroSnap = await db.collection('usuarios').doc(passageiroId).get();
+    if (!passageiroSnap.exists || passageiroSnap.data()?.bloqueado) return;
+
+    const denunciasSnap = await db.collection('denuncias')
+      .where('denunciadoId', '==', passageiroId)
+      .where('tipo', '==', 'passageiro')
+      .get();
+
+    const denunciantesUnicos = new Set(denunciasSnap.docs.map(d => d.data().denuncianteId as string));
+    if (denunciantesUnicos.size < 2) return;
+
+    await db.collection('usuarios').doc(passageiroId).update({ bloqueado: true });
+    console.log('[verificarBanPassageiro] Passageiro banido:', passageiroId);
+
+    const expoPushToken = passageiroSnap.data()?.expoPushToken as string | undefined;
+    if (expoPushToken) {
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: expoPushToken,
+          title: 'Conta suspensa',
+          body: 'Sua conta foi suspensa por denúncias. Entre em contato com suporte@eluus.app',
+          sound: 'default',
+        }),
+      }).catch(e => console.error('[verificarBanPassageiro] Push erro:', e));
+    }
+  }
+);
+
+// ── Callable: admin exclui usuário (Firestore + Auth) ──────────────────────
+export const adminExcluirUsuario = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Não autenticado');
+
+  const adminSnap = await db.collection('usuarios').doc(request.auth.uid).get();
+  if (adminSnap.data()?.tipo !== 'admin') throw new HttpsError('permission-denied', 'Sem permissão');
+
+  const { targetUid } = request.data as { targetUid: string };
+  if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid ausente');
+
+  await db.collection('usuarios').doc(targetUid).delete();
+  await admin.auth().deleteUser(targetUid);
+
+  return { success: true };
+});

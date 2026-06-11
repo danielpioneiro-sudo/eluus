@@ -13,9 +13,16 @@
     "public": "public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
+      { "source": "/admin", "destination": "/admin.html" },
+      { "source": "/m", "destination": "/m.html" },
+      { "source": "/download", "destination": "/download.html" },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
+      {
+        "source": "/admin.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }]
+      },
       {
         "source": "**/*.@(js|css|html)",
         "headers": [{ "key": "Cache-Control", "value": "max-age=3600" }]

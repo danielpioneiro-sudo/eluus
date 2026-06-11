@@ -1,3 +1,5 @@
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -214,6 +216,12 @@ export default function Perfil() {
     setAlterando(false);
   };
 
+  const copiarCodigo = async () => {
+    await Clipboard.setStringAsync(codigo);
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(t('common.copied') || 'Copiado!', codigo);
+  };
+
   const salvarCodigo = async () => {
     if (novoCodigo.length !== 6) { Alert.alert(t('common.attention'), t('perfil.codeSixChars')); return; }
     if (novoCodigo === codigo) { setEditandoCodigo(false); return; }
@@ -298,10 +306,12 @@ export default function Perfil() {
             </TouchableOpacity>
             <Text style={styles.qrTitulo}>{t('perfil.myQrCode')}</Text>
             <Image
-              source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('eluus://cadastro?codigo=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }}
+              source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('https://voucom-285e0.web.app/m?c=' + codigo)}&bgcolor=13161e&color=4a9eff&margin=10` }}
               style={styles.qrImage}
             />
-            <Text style={styles.qrCodigo}>{codigo}</Text>
+            <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
+              <Text style={styles.qrCodigo}>{codigo}</Text>
+            </TouchableOpacity>
             <Text style={styles.qrInfo}>{t('perfil.qrInfo')}</Text>
           </View>
         </View>
@@ -360,7 +370,10 @@ export default function Perfil() {
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={styles.codigoValor}>{codigo}</Text>
+          <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
+            <Text style={styles.codigoValor}>{codigo}</Text>
+            <Text style={styles.codigoCopiarHint}>📋 {t('common.tapToCopy') || 'Toque para copiar'}</Text>
+          </TouchableOpacity>
         )}
         <Text style={styles.codigoInfo}>
           {tipo === 'motorista' ? t('perfil.shareWithPassengers') : t('perfil.yourCode')}
@@ -638,6 +651,7 @@ const styles = StyleSheet.create({
   codigoCard: { backgroundColor: '#1a1f2e', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#4a9eff', gap: 6 },
   codigoLabel: { color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
   codigoValor: { color: '#4a9eff', fontWeight: 'bold', fontSize: 28, letterSpacing: 6 },
+  codigoCopiarHint: { color: '#4a9eff', fontSize: 11, textAlign: 'center', marginTop: 4, opacity: 0.7 },
   codigoInfo: { color: '#64748b', fontSize: 12, textAlign: 'center' },
   secao: { marginBottom: 24 },
   secaoTitulo: { color: '#94a3b8', fontSize: 12, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 },

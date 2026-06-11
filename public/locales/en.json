@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Eluus — Rides with people you trust",
-    "description": "Eluus is the invite-only private transport app. Rides with people you know, no platform fees."
+    "description": "Eluus is the private transport app between people who know each other. Rides with people you trust, no platform fees."
   },
   "nav": {
     "howItWorks": "How it works",
@@ -10,7 +10,7 @@
     "download": "Download"
   },
   "hero": {
-    "badge": "Invites available",
+    "badge": "Available on Android & iOS",
     "titleHtml": "Connections that<br><span>move you</span>",
     "sub": "Private transport with people you already know. No strangers, no platform fees, with total trust.",
     "btnDownload": "Download free",
@@ -21,19 +21,19 @@
     "stat2lbl": "Platform fee",
     "stat3val": "You",
     "stat3lbl": "Set the price",
-    "stat4val": "Private",
-    "stat4lbl": "Invite only"
+    "stat4val": "Free",
+    "stat4lbl": "To download"
   },
   "how": {
     "label": "That simple",
     "title": "How Eluus works",
-    "sub": "From invite to arrival, everything designed to be fast, safe, and straightforward.",
-    "s1title": "Receive an invite",
-    "s1text": "Access to Eluus is exclusive by invite from someone in your network. No strangers in the system.",
+    "sub": "From download to arrival, everything designed to be fast, safe, and straightforward.",
+    "s1title": "Download the app",
+    "s1text": "Download Eluus for free on Google Play. Anyone can install it, no invite required.",
     "s2title": "Create your account",
     "s2text": "Quick sign-up with name and email. In minutes you can already request or offer rides.",
-    "s3title": "Connect",
-    "s3text": "Add drivers or passengers from your network using their invite code or scanning their QR Code.",
+    "s3title": "Build your network",
+    "s3text": "To request or offer rides, add drivers or passengers using each user's exclusive code.",
     "s4title": "Ride with confidence",
     "s4text": "Request or accept rides. Agreed price, integrated chat, and navigation directly on the map."
   },
@@ -41,8 +41,8 @@
     "label": "Why Eluus",
     "title": "Different from everything you know",
     "sub": "We're not a regular transport app. We're a trust network with mobility.",
-    "c1title": "Invite-only access",
-    "c1text": "Only people invited by someone already registered can join. Your network, your choice.",
+    "c1title": "Trust network",
+    "c1text": "You choose who to connect with: add drivers and passengers using each user's exclusive code. Your network, your choice.",
     "c2title": "No platform fees",
     "c2text": "The fare goes directly to the driver. No percentage withheld, no charge per ride.",
     "c3title": "Passenger sets the price",
@@ -103,12 +103,12 @@
   "dl": {
     "label": "Available now",
     "titleHtml": "Join the<br>Eluus network",
-    "text": "Download the app, enter your invite code and start moving with confidence. Available for Android and iOS.",
+    "text": "Download the app for free and start moving with confidence. Available for Android and iOS. To add drivers or passengers, use each user's exclusive code.",
     "androidSmall": "Get it on",
     "androidStrong": "Google Play",
     "iosSmall": "Download on the",
     "iosStrong": "App Store",
-    "inviteHtml": "You need an <strong>invite code</strong> to create your account. Ask someone from your network."
+    "inviteHtml": "To <strong>add a driver or passenger</strong>, use their exclusive code. Your network, your choice."
   },
   "foot": {
     "tagline": "Connections that move you. Private transport between people who know each other, with trust and no platform fees.",
@@ -121,7 +121,7 @@
     "lterms": "Terms of use",
     "lprivacy": "Privacy policy",
     "lloc": "Location use",
-    "copy": "© 2025 Eluus. All rights reserved.",
+    "copy": "© 2026 Eluus. All rights reserved.",
     "made": "Made with ❤️ for those who value trust."
   }
 }

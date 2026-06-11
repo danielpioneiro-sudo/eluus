@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, updateDoc, where } from 'firebase/firestore';
+import { addDoc, arrayRemove, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -76,6 +78,9 @@ export default function Passageiro() {
   const [categoriaDenuncia, setCategoriaDenuncia] = useState('');
   const [textoDenuncia, setTextoDenuncia] = useState('');
   const [denunciando, setDenunciando] = useState(false);
+  const [bloqueado, setBloqueado] = useState(false);
+  const [convitesPendentes, setConvitesPendentes] = useState<any[]>([]);
+  const unsubConvitesRef = useRef<any>(null);
 
   const [aguardandoResposta, setAguardandoResposta] = useState(false);
   const [contagemRegressiva, setContagemRegressiva] = useState(60);
@@ -96,19 +101,122 @@ export default function Passageiro() {
   const unsubChatRef = useRef<any>(null);
   const chatAbertoRef = useRef(false);
   const chatScrollRef = useRef<any>(null);
+  const unsubUsuarioRef = useRef<any>(null);
 
   useEffect(() => {
+    registrarPushToken();
+    escutarUsuario();
     carregarPassageiro();
     pegarLocalizacao();
     carregarDadosSalvos();
     restaurarCorrida();
+    verificarCodigoPendente();
     return () => {
       unsubMotoristasRef.current.forEach(u => u());
       if (unsubCorridaRef.current) unsubCorridaRef.current();
       if (unsubChatRef.current) unsubChatRef.current();
       if (timerRef.current) clearInterval(timerRef.current);
+      if (unsubConvitesRef.current) unsubConvitesRef.current();
+      if (unsubUsuarioRef.current) unsubUsuarioRef.current();
     };
   }, []);
+
+  // ── push token ──────────────────────────────────────────────────────────
+
+  const registrarPushToken = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        (Constants as any).easConfig?.projectId;
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      const uid = auth.currentUser?.uid;
+      if (uid && token) {
+        await updateDoc(doc(db, 'usuarios', uid), { expoPushToken: token });
+      }
+    } catch (e) {}
+  };
+
+  // ── listener do usuário (bloqueio) ───────────────────────────────────────
+
+  const escutarUsuario = () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    unsubUsuarioRef.current = onSnapshot(doc(db, 'usuarios', uid), (snap) => {
+      if (snap.exists()) {
+        setBloqueado(snap.data().bloqueado === true);
+        const ids: string[] = [...new Set(snap.data().motoristas || [])] as string[];
+        setMotoristasIds(ids);
+      }
+    });
+    escutarConvites(uid);
+  };
+
+  // ── convites pendentes ───────────────────────────────────────────────────
+
+  const escutarConvites = (uid: string) => {
+    if (unsubConvitesRef.current) unsubConvitesRef.current();
+    const q = query(
+      collection(db, 'convites'),
+      where('paraId', '==', uid),
+      where('status', '==', 'pendente')
+    );
+    unsubConvitesRef.current = onSnapshot(q, async (snap) => {
+      const lista = await Promise.all(snap.docs.map(async (d) => {
+        const data = d.data();
+        const motSnap = await getDoc(doc(db, 'usuarios', data.deId));
+        return { id: d.id, ...data, deNome: motSnap.data()?.nome || data.deNome || 'Motorista' };
+      }));
+      setConvitesPendentes(lista);
+    });
+  };
+
+  const aceitarConvite = async (convite: any) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      const userSnap = await getDoc(doc(db, 'usuarios', uid));
+      const idsAtuais: string[] = userSnap.data()?.motoristas || [];
+      if (!idsAtuais.includes(convite.deId)) {
+        await updateDoc(doc(db, 'usuarios', uid), { motoristas: [...idsAtuais, convite.deId] });
+      }
+      await deleteDoc(doc(db, 'convites', convite.id));
+    } catch (e) {
+      Alert.alert(t('common.error'), 'Não foi possível aceitar o convite');
+    }
+  };
+
+  const recusarConvite = async (conviteId: string) => {
+    try {
+      await deleteDoc(doc(db, 'convites', conviteId));
+    } catch (e) {
+      Alert.alert(t('common.error'), 'Não foi possível recusar o convite');
+    }
+  };
+
+  // ── remover motorista ────────────────────────────────────────────────────
+
+  const removerMotorista = async (motoristaId: string, motoristaNome: string) => {
+    Alert.alert(
+      'Remover da rede',
+      `Deseja remover ${motoristaNome} da sua lista?`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Remover', style: 'destructive', onPress: async () => {
+            const uid = auth.currentUser?.uid;
+            if (!uid) return;
+            try {
+              await updateDoc(doc(db, 'usuarios', uid), { motoristas: arrayRemove(motoristaId) });
+            } catch (e) {
+              Alert.alert(t('common.error'), 'Não foi possível remover o motorista');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // ── dados salvos localmente ──────────────────────────────────────────────
 
@@ -155,9 +263,56 @@ export default function Passageiro() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
+      const ultima = await Location.getLastKnownPositionAsync();
+      if (ultima) setMinhaLocalizacao({ lat: ultima.coords.latitude, lng: ultima.coords.longitude });
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setMinhaLocalizacao({ lat: loc.coords.latitude, lng: loc.coords.longitude });
     } catch (e) {}
+  };
+
+  // ── QR code pendente ─────────────────────────────────────────────────────
+
+  const verificarCodigoPendente = async () => {
+    try {
+      const codigo = await AsyncStorage.getItem('@eluus_codigo_pendente');
+      if (!codigo) return;
+      await AsyncStorage.removeItem('@eluus_codigo_pendente');
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      const q = query(collection(db, 'usuarios'), where('codigo', '==', codigo), where('tipo', '==', 'motorista'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        Alert.alert(t('common.attention'), `Motorista com código ${codigo} não encontrado.`);
+        return;
+      }
+      const motoristaDoc = snap.docs[0];
+      const motoristaNome = motoristaDoc.data().nome;
+      const userSnap = await getDoc(doc(db, 'usuarios', uid));
+      const idsAtuais: string[] = userSnap.data()?.motoristas || [];
+      if (idsAtuais.includes(motoristaDoc.id)) {
+        Alert.alert(t('common.attention'), `${motoristaNome} já está na sua lista.`);
+        return;
+      }
+      Alert.alert(
+        t('passageiro.addDriver') || 'Adicionar motorista?',
+        `Deseja adicionar ${motoristaNome} como seu motorista?`,
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.confirm') || 'Adicionar',
+            onPress: async () => {
+              const novosIds = [...idsAtuais, motoristaDoc.id];
+              await updateDoc(doc(db, 'usuarios', uid), { motoristas: novosIds });
+              Alert.alert(t('common.success'), `${motoristaNome} ${t('passageiro.driverAdded')}`);
+              setMotoristasIds(novosIds);
+              escutarMotoristas(novosIds);
+            },
+          },
+        ]
+      );
+    } catch (e) {
+      console.error('[codigoPendente] erro:', e);
+    }
   };
 
   // ── Firestore ────────────────────────────────────────────────────────────
@@ -175,6 +330,11 @@ export default function Passageiro() {
       }
     } catch (e) {}
   };
+
+  // Sincroniza a lista de motoristas quando motoristasIds muda via onSnapshot
+  useEffect(() => {
+    if (motoristasIds.length > 0) escutarMotoristas(motoristasIds);
+  }, [motoristasIds.join(',')]);
 
   const restaurarCorrida = async () => {
     const uid = auth.currentUser?.uid;
@@ -844,7 +1004,7 @@ export default function Passageiro() {
           body: JSON.stringify({
             to: mData.expoPushToken,
             title: '🔶 Nova parada adicionada',
-            body: `${paradaAtivaInfo.descricao} · Novo valor: R$ ${novoValor}`,
+            body: `${paradaAtivaInfo.descricao} · Novo valor: $ ${novoValor}`,
             data: { corridaId: corrida.id },
             channelId: 'corridas',
             priority: 'high',
@@ -880,6 +1040,17 @@ export default function Passageiro() {
 
   return (
     <KeyboardAvoidingView style={styles.wrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+      {/* Tela de bloqueio */}
+      {bloqueado && (
+        <View style={styles.bloqueioOverlay}>
+          <Text style={styles.bloqueioEmoji}>🚫</Text>
+          <Text style={styles.bloqueioTitulo}>Conta suspensa</Text>
+          <Text style={styles.bloqueioTxt}>
+            Sua conta foi suspensa por denúncias. Entre em contato com o suporte em suporte@eluus.app
+          </Text>
+        </View>
+      )}
 
       {/* Aviso inicial */}
       <Modal visible={mostrarAvisoInicial} transparent animationType="fade">
@@ -945,7 +1116,7 @@ export default function Passageiro() {
               {motoristaPerfilModal?.precoPorKm ? (
                 <View style={styles.perfilInfoItem}>
                   <Text style={styles.perfilInfoLabel}>{t('passageiro.pricePerKmLabel')}</Text>
-                  <Text style={styles.perfilInfoValor}>R$ {motoristaPerfilModal.precoPorKm.toFixed(2)}</Text>
+                  <Text style={styles.perfilInfoValor}>$ {motoristaPerfilModal.precoPorKm.toFixed(2)}</Text>
                 </View>
               ) : null}
             </View>
@@ -1006,7 +1177,7 @@ export default function Passageiro() {
             {corridaParaAvaliar?.valor && (
               <View style={styles.corridaValorFinalBox}>
                 <Text style={styles.corridaValorFinalTxt}>{t('passageiro.rideValue')}</Text>
-                <Text style={styles.corridaValorFinalNum}>R$ {corridaParaAvaliar.valor}</Text>
+                <Text style={styles.corridaValorFinalNum}>$ {corridaParaAvaliar.valor}</Text>
               </View>
             )}
             <Text style={styles.avaliacaoTitulo}>{t('passageiro.rateRide')}</Text>
@@ -1156,7 +1327,7 @@ export default function Passageiro() {
                 {corridaAtiva.paradaDescricao ? (
                   <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAtiva.paradaDescricao}</Text>
                 ) : null}
-                <Text style={styles.corridaAtivaValor}>💰 R$ {corridaAtiva.valor} · {corridaAtiva.distancia} km total</Text>
+                <Text style={styles.corridaAtivaValor}>💰 $ {corridaAtiva.valor} · {corridaAtiva.distancia} km total</Text>
               </View>
             </View>
             <View style={styles.corridaAtivaBtns}>
@@ -1210,7 +1381,7 @@ export default function Passageiro() {
                 <Text style={styles.aguardandoMotorista}>{corridaPendente.motoristaNome}</Text>
                 <Text style={styles.aguardandoDestino}>📍 {corridaPendente.destino}</Text>
                 {corridaPendente.valor ? (
-                  <Text style={styles.aguardandoValor}>💰 R$ {corridaPendente.valor}</Text>
+                  <Text style={styles.aguardandoValor}>💰 $ {corridaPendente.valor}</Text>
                 ) : null}
                 {aguardandoResposta && (
                   <Text style={styles.contagemTxt}>⏰ {contagemRegressiva}s restantes</Text>
@@ -1362,7 +1533,7 @@ export default function Passageiro() {
                       <Text style={styles.motoristaNome}>{m.nome}</Text>
                     </TouchableOpacity>
                     <Text style={styles.motoristaSub}>
-                      R$ {m.precoPorKm?.toFixed(2) || '2.50'}/km
+                      $ {m.precoPorKm?.toFixed(2) || '2.50'}/km
                       {m.veiculo ? ` · ${m.veiculo}` : ''}
                       {m.cor ? ` ${m.cor}` : ''}
                     </Text>
@@ -1372,9 +1543,14 @@ export default function Passageiro() {
                     ) : null}
                   </View>
 
-                  <View style={styles.onlineTag}>
-                    <View style={[styles.bolinhaStatus, { backgroundColor: m.online ? '#22c55e' : '#4a5568' }]} />
-                    <Text style={[styles.onlineTxt, { color: m.online ? '#22c55e' : '#4a5568' }]}>{m.online ? 'Online' : 'Offline'}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <View style={styles.onlineTag}>
+                      <View style={[styles.bolinhaStatus, { backgroundColor: m.online ? '#22c55e' : '#4a5568' }]} />
+                      <Text style={[styles.onlineTxt, { color: m.online ? '#22c55e' : '#4a5568' }]}>{m.online ? 'Online' : 'Offline'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removerMotorista(m.id, m.nome)} style={styles.removerMotoristaBtn}>
+                      <Text style={styles.removerMotoristaTxt}>✕</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -1403,7 +1579,7 @@ export default function Passageiro() {
                     </View>
                     <View style={styles.valorItem}>
                       <Text style={styles.valorLabel}>{t('passageiro.total')}</Text>
-                      <Text style={styles.valorPreco}>R$ {valores[m.id].preco}</Text>
+                      <Text style={styles.valorPreco}>$ {valores[m.id].preco}</Text>
                     </View>
                   </View>
                 )}
@@ -1416,6 +1592,27 @@ export default function Passageiro() {
             ))
           )}
         </View>
+
+        {/* Convites pendentes */}
+        {convitesPendentes.length > 0 && (
+          <View style={styles.secao}>
+            <Text style={styles.secaoTitulo}>Convites pendentes</Text>
+            {convitesPendentes.map((c: any) => (
+              <View key={c.id} style={styles.conviteCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.conviteNome}>{c.deNome}</Text>
+                  <Text style={styles.conviteSub}>Quer entrar na sua rede</Text>
+                </View>
+                <TouchableOpacity style={styles.conviteAceitarBtn} onPress={() => aceitarConvite(c)}>
+                  <Text style={styles.conviteAceitarTxt}>Aceitar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.conviteRecusarBtn} onPress={() => recusarConvite(c.id)}>
+                  <Text style={styles.conviteRecusarTxt}>Recusar</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Adicionar motorista */}
         {mostrarAdd ? (
@@ -1627,4 +1824,17 @@ const styles = StyleSheet.create({
   paradaAtivaConfirmBtnTxt: { color: '#000', fontWeight: 'bold', fontSize: 15 },
   addParadaAtivaBtn: { marginTop: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#f59e0b33', alignItems: 'center' },
   addParadaAtivaTxt: { color: '#f59e0b', fontSize: 13, fontWeight: '600' },
+  bloqueioOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#0d0f14', zIndex: 9999, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  bloqueioEmoji: { fontSize: 56, marginBottom: 16 },
+  bloqueioTitulo: { color: '#ef4444', fontWeight: 'bold', fontSize: 22, marginBottom: 12, textAlign: 'center' },
+  bloqueioTxt: { color: '#94a3b8', fontSize: 15, textAlign: 'center', lineHeight: 24 },
+  removerMotoristaBtn: { backgroundColor: '#2a1a1a', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#ef444444' },
+  removerMotoristaTxt: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
+  conviteCard: { backgroundColor: '#1a1f2e', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, borderWidth: 1, borderColor: '#4a9eff44' },
+  conviteNome: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  conviteSub: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  conviteAceitarBtn: { backgroundColor: '#0f2a1a', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#22c55e' },
+  conviteAceitarTxt: { color: '#22c55e', fontWeight: '700', fontSize: 13 },
+  conviteRecusarBtn: { backgroundColor: '#2a1a1a', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: '#ef4444' },
+  conviteRecusarTxt: { color: '#ef4444', fontWeight: '700', fontSize: 13 },
 });
