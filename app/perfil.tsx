@@ -372,7 +372,7 @@ export default function Perfil() {
         ) : (
           <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
             <Text style={styles.codigoValor}>{codigo}</Text>
-            <Text style={styles.codigoCopiarHint}>📋 {t('common.tapToCopy') || 'Toque para copiar'}</Text>
+            <Text style={styles.codigoCopiarHint}>{t('common.tapToCopy') || 'Toque para copiar'}</Text>
           </TouchableOpacity>
         )}
         <Text style={styles.codigoInfo}>
@@ -413,7 +413,7 @@ export default function Perfil() {
 
         {pais !== 'BR' && pais !== '' && (
           <View style={[styles.phoneVerifBadge, phoneVerified ? styles.badgeVerified : styles.badgePending]}>
-            <Text style={styles.phoneVerifIcon}>{phoneVerified ? '✅' : '⏳'}</Text>
+            <Text style={styles.phoneVerifIcon}>{phoneVerified ? '✅' : ''}</Text>
             <Text style={styles.phoneVerifTxt}>
               {phoneVerified
                 ? t('perfil.phoneVerified')
@@ -434,7 +434,7 @@ export default function Perfil() {
           keyboardType="phone-pad"
         />
         {tipo === 'motorista' && (
-          <Text style={styles.phoneWarning}>📞 {t('perfil.phoneRequired')}</Text>
+          <Text style={styles.phoneWarning}>{t('perfil.phoneRequired')}</Text>
         )}
 
         <Text style={styles.label}>{t('perfil.whatsapp')}</Text>
@@ -500,7 +500,6 @@ export default function Perfil() {
       <View style={[styles.secao, { marginTop: 4 }]}>
         <Text style={styles.secaoTitulo}>{t('perfil.security')}</Text>
         <TouchableOpacity style={styles.segBtn} onPress={() => setModalSenha(true)}>
-          <Text style={styles.segBtnIcon}>🔑</Text>
           <Text style={styles.segBtnTxt}>{t('perfil.changePassword')}</Text>
           <Text style={styles.segBtnArrow}>›</Text>
         </TouchableOpacity>

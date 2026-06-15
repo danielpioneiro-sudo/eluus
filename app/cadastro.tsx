@@ -77,7 +77,6 @@ export default function Cadastro() {
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [tipo, setTipo] = useState('passageiro');
-  const [cnh, setCnh] = useState('');
   const [loading, setLoading] = useState(false);
   const [declaracaoMotorista, setDeclaracaoMotorista] = useState(false);
 
@@ -135,10 +134,6 @@ export default function Cadastro() {
       Alert.alert(t('common.attention'), t('cadastro.alertPasswordMismatch'));
       return;
     }
-    if (tipo === 'motorista' && isBrasil && !cnh.trim()) {
-      Alert.alert(t('common.attention'), t('cadastro.alertNoCNH'));
-      return;
-    }
     if (tipo === 'motorista' && !declaracaoMotorista) {
       Alert.alert(t('cadastro.alertDeclarationTitle'), t('cadastro.alertDeclarationMsg'));
       return;
@@ -190,7 +185,6 @@ export default function Cadastro() {
         pais,
         phoneVerified: true,
         ...(isBrasil && { cpf: cpfLimpo }),
-        ...(isBrasil && tipo === 'motorista' && { cnh: cnh.trim() }),
         criadoEm: new Date(),
       });
 
@@ -224,13 +218,11 @@ export default function Cadastro() {
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'passageiro' && styles.tipoativo]}
             onPress={() => setTipo('passageiro')}>
-            <Text style={styles.tipoicon}>🧍</Text>
             <Text style={[styles.tipotxt, tipo === 'passageiro' && styles.tipotxtativo]}>{t('cadastro.passenger')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'motorista' && styles.tipoativoverde]}
             onPress={() => setTipo('motorista')}>
-            <Text style={styles.tipoicon}>🚗</Text>
             <Text style={[styles.tipotxt, tipo === 'motorista' && styles.tipotxtativo]}>{t('cadastro.driver')}</Text>
           </TouchableOpacity>
         </View>
@@ -257,13 +249,6 @@ export default function Cadastro() {
         <TextInput style={styles.input} placeholder={t('cadastro.emailPlaceholder')} placeholderTextColor="#4a5568"
           value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
 
-        {tipo === 'motorista' && isBrasil && (
-          <>
-            <Text style={styles.secao}>{t('cadastro.driverData')}</Text>
-            <TextInput style={styles.input} placeholder={t('cadastro.cnhPlaceholder')} placeholderTextColor="#4a5568"
-              value={cnh} onChangeText={setCnh} keyboardType="numeric" maxLength={11} />
-          </>
-        )}
 
         <Text style={styles.secao}>{t('cadastro.security')}</Text>
 

@@ -194,13 +194,11 @@ export default function CompletarCadastro() {
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'passageiro' && styles.tipoativo]}
             onPress={() => setTipo('passageiro')}>
-            <Text style={styles.tipoicon}>🧍</Text>
             <Text style={[styles.tipotxt, tipo === 'passageiro' && styles.tipotxtativo]}>Passageiro</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tipobtn, tipo === 'motorista' && styles.tipoativoverde]}
             onPress={() => setTipo('motorista')}>
-            <Text style={styles.tipoicon}>🚗</Text>
             <Text style={[styles.tipotxt, tipo === 'motorista' && styles.tipotxtativo]}>Motorista</Text>
           </TouchableOpacity>
         </View>
@@ -237,7 +235,7 @@ export default function CompletarCadastro() {
         />
         {!isBrasil && (
           <Text style={styles.smsAviso}>
-            📱 Seu número de telefone é usado para verificar sua identidade
+            Seu número de telefone é usado para verificar sua identidade
           </Text>
         )}
 

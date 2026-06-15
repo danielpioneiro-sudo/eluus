@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import * as Localization from 'expo-localization';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -25,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { auth, db } from '../firebaseConfig';
+import { formatDistance } from '../utils/distance';
 
 const GOOGLE_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY;
 const HISTORICO_KEY = '@eluus_historico_busca';
@@ -499,7 +501,7 @@ export default function Passageiro() {
     try {
       const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
       const res = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}${locationParam}&key=${GOOGLE_KEY}`
       );
       if (res.data.status === 'OK') setSugestoes(res.data.predictions || []);
     } catch (e) {}
@@ -511,7 +513,7 @@ export default function Passageiro() {
     try {
       const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
       const res = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}${locationParam}&key=${GOOGLE_KEY}`
       );
       if (res.data.status === 'OK') setParadaSugestoes(res.data.predictions || []);
     } catch (e) {}
@@ -582,7 +584,7 @@ export default function Passageiro() {
         let distMotoristaPassageiro = 0;
         if (locAtual?.lat && locAtual?.lng) {
           const rota1 = await axios.get(
-            `https://maps.googleapis.com/maps/api/directions/json?origin=${mLat},${mLng}&destination=${locAtual.lat},${locAtual.lng}&language=pt-BR&key=${GOOGLE_KEY}`
+            `https://maps.googleapis.com/maps/api/directions/json?origin=${mLat},${mLng}&destination=${locAtual.lat},${locAtual.lng}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}&key=${GOOGLE_KEY}`
           );
           if (rota1.data.status === 'OK' && rota1.data.routes.length > 0) {
             distMotoristaPassageiro = rota1.data.routes[0].legs[0].distance.value / 1000;
@@ -592,7 +594,7 @@ export default function Passageiro() {
         const origemPassageiro = locAtual?.lat ? `${locAtual.lat},${locAtual.lng}` : `${mLat},${mLng}`;
         const waypointParam = paradaAtual ? `&waypoints=${paradaAtual.lat},${paradaAtual.lng}` : '';
         const rota2 = await axios.get(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${origemPassageiro}&destination=${destCoords.lat},${destCoords.lng}${waypointParam}&language=pt-BR&key=${GOOGLE_KEY}`
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${origemPassageiro}&destination=${destCoords.lat},${destCoords.lng}${waypointParam}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}&key=${GOOGLE_KEY}`
         );
 
         if (rota2.data.status === 'OK' && rota2.data.routes.length > 0) {
@@ -616,7 +618,7 @@ export default function Passageiro() {
           };
         }
       }
-      if (Object.keys(novosValores).length === 0) Alert.alert(t('common.attention'), t('passageiro.noLocationAvailable'));
+      if (Object.keys(novosValores).length === 0) Alert.alert(t('common.attention'), t('passageiro.noLocationAvailableMsg'));
       setValores(novosValores);
     } catch (e) { Alert.alert(t('common.error'), 'Não foi possível calcular as rotas'); }
     setCalculando(false);
@@ -684,8 +686,8 @@ export default function Passageiro() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: motorista.expoPushToken,
-            title: '🚗 Nova corrida!',
-            body: `${nomeUsuario} quer ir para ${destino}`,
+            title: 'Nova corrida!',
+            body: `${nomeUsuario} → ${destino} • $${Number(val.preco).toFixed(2)}`,
             data: { corridaId: corridaRef.id },
             channelId: 'corridas',
             priority: 'high',
@@ -946,7 +948,7 @@ export default function Passageiro() {
     try {
       const locationParam = minhaLocalizacao ? `&location=${minhaLocalizacao.lat},${minhaLocalizacao.lng}&radius=50000` : '';
       const res = await axios.get(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=pt-BR${locationParam}&key=${GOOGLE_KEY}`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(texto)}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}${locationParam}&key=${GOOGLE_KEY}`
       );
       if (res.data.status === 'OK') setParadaAtivaSugestoes(res.data.predictions || []);
     } catch (e) {}
@@ -977,7 +979,7 @@ export default function Passageiro() {
         const mData = motoristaSnap.data();
         const waypointParam = `&waypoints=${paradaAtivaInfo.lat},${paradaAtivaInfo.lng}`;
         const rota = await axios.get(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${corrida.passageiroLat},${corrida.passageiroLng}&destination=${corrida.destLat},${corrida.destLng}${waypointParam}&language=pt-BR&key=${GOOGLE_KEY}`
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${corrida.passageiroLat},${corrida.passageiroLng}&destination=${corrida.destLat},${corrida.destLng}${waypointParam}&language=${Localization.getLocales()[0]?.languageTag ?? 'pt-BR'}&key=${GOOGLE_KEY}`
         );
         if (rota.data.status === 'OK') {
           const legs = rota.data.routes[0].legs;
@@ -1056,7 +1058,6 @@ export default function Passageiro() {
       <Modal visible={mostrarAvisoInicial} transparent animationType="fade">
         <View style={styles.avisoOverlay}>
           <View style={styles.avisoCard}>
-            <Text style={styles.avisoEmoji}>🤝</Text>
             <Text style={styles.avisoTitulo}>{t('passageiro.reminderTitle')}</Text>
             <Text style={styles.avisoTexto}>
               {t('passageiro.reminderText')}
@@ -1075,57 +1076,59 @@ export default function Passageiro() {
             <TouchableOpacity style={styles.perfilFechar} onPress={() => setMotoristaPerfilModal(null)}>
               <Text style={styles.perfilFecharTxt}>✕</Text>
             </TouchableOpacity>
-            {motoristaPerfilModal?.fotoUri ? (
-              <Image source={{ uri: motoristaPerfilModal.fotoUri }} style={styles.perfilFoto} />
-            ) : (
-              <View style={styles.perfilAvatarGrande}>
-                <Text style={styles.perfilAvatarTxt}>{motoristaPerfilModal?.nome?.charAt(0).toUpperCase()}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.perfilScroll}>
+              {motoristaPerfilModal?.fotoUri ? (
+                <Image source={{ uri: motoristaPerfilModal.fotoUri }} style={styles.perfilFoto} />
+              ) : (
+                <View style={styles.perfilAvatarGrande}>
+                  <Text style={styles.perfilAvatarTxt}>{motoristaPerfilModal?.nome?.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.perfilNome}>{motoristaPerfilModal?.nome}</Text>
+              {motoristaPerfilModal?.avaliacaoMedia ? (
+                <View style={styles.perfilAvalRow}>
+                  <Text style={styles.perfilEstrela}>★</Text>
+                  <Text style={styles.perfilAvalTxt}>
+                    {motoristaPerfilModal.avaliacaoMedia.toFixed(1)} ({t('passageiro.reviewsCount', { count: motoristaPerfilModal.totalAvaliacoes || 0 })})
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.perfilSemAval}>{t('passageiro.noReviews')}</Text>
+              )}
+              <View style={styles.perfilDivisor} />
+              <View style={styles.perfilInfoGrid}>
+                {motoristaPerfilModal?.veiculo ? (
+                  <View style={styles.perfilInfoItem}>
+                    <Text style={styles.perfilInfoLabel}>{t('passageiro.vehicle')}</Text>
+                    <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.veiculo}</Text>
+                  </View>
+                ) : null}
+                {motoristaPerfilModal?.cor ? (
+                  <View style={styles.perfilInfoItem}>
+                    <Text style={styles.perfilInfoLabel}>{t('passageiro.color')}</Text>
+                    <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.cor}</Text>
+                  </View>
+                ) : null}
+                {motoristaPerfilModal?.placa ? (
+                  <View style={styles.perfilInfoItem}>
+                    <Text style={styles.perfilInfoLabel}>{t('passageiro.plate')}</Text>
+                    <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.placa}</Text>
+                  </View>
+                ) : null}
+                {motoristaPerfilModal?.precoPorKm ? (
+                  <View style={styles.perfilInfoItem}>
+                    <Text style={styles.perfilInfoLabel}>{t('passageiro.pricePerKmLabel')}</Text>
+                    <Text style={styles.perfilInfoValor}>$ {motoristaPerfilModal.precoPorKm.toFixed(2)}</Text>
+                  </View>
+                ) : null}
               </View>
-            )}
-            <Text style={styles.perfilNome}>{motoristaPerfilModal?.nome}</Text>
-            {motoristaPerfilModal?.avaliacaoMedia ? (
-              <View style={styles.perfilAvalRow}>
-                <Text style={styles.perfilEstrela}>★</Text>
-                <Text style={styles.perfilAvalTxt}>
-                  {motoristaPerfilModal.avaliacaoMedia.toFixed(1)} ({t('passageiro.reviewsCount', { count: motoristaPerfilModal.totalAvaliacoes || 0 })})
-                </Text>
-              </View>
-            ) : (
-              <Text style={styles.perfilSemAval}>{t('passageiro.noReviews')}</Text>
-            )}
-            <View style={styles.perfilDivisor} />
-            <View style={styles.perfilInfoGrid}>
-              {motoristaPerfilModal?.veiculo ? (
-                <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>{t('passageiro.vehicle')}</Text>
-                  <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.veiculo}</Text>
+              {motoristaPerfilModal?.telefone ? (
+                <View style={styles.perfilTelBox}>
+                  <Text style={styles.perfilTelLabel}>{t('passageiro.phoneLabel')}</Text>
+                  <Text style={styles.perfilTelValor}>{motoristaPerfilModal.telefone}</Text>
                 </View>
               ) : null}
-              {motoristaPerfilModal?.cor ? (
-                <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>{t('passageiro.color')}</Text>
-                  <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.cor}</Text>
-                </View>
-              ) : null}
-              {motoristaPerfilModal?.placa ? (
-                <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>{t('passageiro.plate')}</Text>
-                  <Text style={styles.perfilInfoValor}>{motoristaPerfilModal.placa}</Text>
-                </View>
-              ) : null}
-              {motoristaPerfilModal?.precoPorKm ? (
-                <View style={styles.perfilInfoItem}>
-                  <Text style={styles.perfilInfoLabel}>{t('passageiro.pricePerKmLabel')}</Text>
-                  <Text style={styles.perfilInfoValor}>$ {motoristaPerfilModal.precoPorKm.toFixed(2)}</Text>
-                </View>
-              ) : null}
-            </View>
-            {motoristaPerfilModal?.telefone ? (
-              <View style={styles.perfilTelBox}>
-                <Text style={styles.perfilTelLabel}>{t('passageiro.phoneLabel')}</Text>
-                <Text style={styles.perfilTelValor}>{motoristaPerfilModal.telefone}</Text>
-              </View>
-            ) : null}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1291,7 +1294,7 @@ export default function Passageiro() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>eluus</Text>
-            <Text style={styles.bemvindo}>{t('passageiro.hello')}, {primeiroNome} 👋</Text>
+            <Text style={styles.bemvindo}>{t('passageiro.hello')}, {primeiroNome}</Text>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity onPress={() => router.push('/historico')} style={styles.headerBtn}>
@@ -1313,7 +1316,7 @@ export default function Passageiro() {
         {corridaAtiva && (
           <View style={[styles.corridaAtivaCard, motoristaChegou && styles.corridaChegouCard]}>
             <View style={styles.corridaAtivaTop}>
-              <Text style={styles.corridaAtivaEmoji}>{motoristaChegou ? '🚗' : '⏳'}</Text>
+              <Text style={styles.corridaAtivaEmoji}>{''}</Text>
               <View style={styles.corridaAtivaInfo}>
                 <Text style={[styles.corridaAtivaTitulo, motoristaChegou && styles.corridaChegouTitulo]}>
                   {motoristaChegou ? t('passageiro.driverArrivedTitle') : t('passageiro.rideInProgress')}
@@ -1327,7 +1330,7 @@ export default function Passageiro() {
                 {corridaAtiva.paradaDescricao ? (
                   <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAtiva.paradaDescricao}</Text>
                 ) : null}
-                <Text style={styles.corridaAtivaValor}>💰 $ {corridaAtiva.valor} · {corridaAtiva.distancia} km total</Text>
+                <Text style={styles.corridaAtivaValor}>$ {corridaAtiva.valor} · {formatDistance(corridaAtiva.distancia)} total</Text>
               </View>
             </View>
             <View style={styles.corridaAtivaBtns}>
@@ -1372,7 +1375,7 @@ export default function Passageiro() {
                   <Text style={styles.aguardandoEmoji}>🔔</Text>
                 </Animated.View>
               ) : (
-                <Text style={styles.aguardandoEmoji}>⏳</Text>
+                <Text style={styles.aguardandoEmoji}>{''}</Text>
               )}
               <View style={styles.aguardandoInfo}>
                 <Text style={styles.aguardandoTitulo}>
@@ -1381,10 +1384,10 @@ export default function Passageiro() {
                 <Text style={styles.aguardandoMotorista}>{corridaPendente.motoristaNome}</Text>
                 <Text style={styles.aguardandoDestino}>📍 {corridaPendente.destino}</Text>
                 {corridaPendente.valor ? (
-                  <Text style={styles.aguardandoValor}>💰 $ {corridaPendente.valor}</Text>
+                  <Text style={styles.aguardandoValor}>$ {corridaPendente.valor}</Text>
                 ) : null}
                 {aguardandoResposta && (
-                  <Text style={styles.contagemTxt}>⏰ {contagemRegressiva}s restantes</Text>
+                  <Text style={styles.contagemTxt}>{contagemRegressiva}s restantes</Text>
                 )}
               </View>
             </View>
@@ -1430,7 +1433,6 @@ export default function Passageiro() {
               <Text style={styles.historicoLabel}>{t('passageiro.recentSearches')}</Text>
               {historicoBusca.map((h, i) => (
                 <TouchableOpacity key={i} style={styles.sugestaoItem} onPress={() => calcularValores(h.placeId, h.descricao)}>
-                  <Text style={styles.historicoIcon}>🕐</Text>
                   <Text style={styles.sugestaoTxt}>{h.descricao}</Text>
                 </TouchableOpacity>
               ))}
@@ -1509,7 +1511,6 @@ export default function Passageiro() {
           <Text style={styles.secaoTitulo}>{t('passageiro.myDrivers')}</Text>
           {motoristas.length === 0 ? (
             <View style={styles.vazio}>
-              <Text style={styles.vazioemoji}>🚗</Text>
               <Text style={styles.vaziotxt}>{t('passageiro.noDrivers')}</Text>
               <Text style={styles.vaziossub}>{t('passageiro.noDriversSub')}</Text>
             </View>
@@ -1537,7 +1538,7 @@ export default function Passageiro() {
                       {m.veiculo ? ` · ${m.veiculo}` : ''}
                       {m.cor ? ` ${m.cor}` : ''}
                     </Text>
-                    {m.placa ? <Text style={styles.motoristaSub}>🚗 {m.placa}</Text> : null}
+                    {m.placa ? <Text style={styles.motoristaSub}>{m.placa}</Text> : null}
                     {m.avaliacaoMedia ? (
                       <Text style={styles.motoristaSub}>⭐ {m.avaliacaoMedia.toFixed(1)} ({m.totalAvaliacoes || 0} aval.)</Text>
                     ) : null}
@@ -1571,11 +1572,11 @@ export default function Passageiro() {
                   <View style={styles.valorBox}>
                     <View style={styles.valorItem}>
                       <Text style={styles.valorLabel}>{t('passageiro.toYou')}</Text>
-                      <Text style={styles.valorTxt}>{valores[m.id].distMotoristaPassageiro} km</Text>
+                      <Text style={styles.valorTxt}>{formatDistance(valores[m.id].distMotoristaPassageiro)}</Text>
                     </View>
                     <View style={styles.valorItem}>
                       <Text style={styles.valorLabel}>{t('passageiro.toDestination')}</Text>
-                      <Text style={styles.valorTxt}>{valores[m.id].distPassageiroDestino} km</Text>
+                      <Text style={styles.valorTxt}>{formatDistance(valores[m.id].distPassageiroDestino)}</Text>
                     </View>
                     <View style={styles.valorItem}>
                       <Text style={styles.valorLabel}>{t('passageiro.total')}</Text>
@@ -1762,8 +1763,9 @@ const styles = StyleSheet.create({
   avisoBtnTxt: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   // perfil do motorista
   perfilOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  perfilCard: { backgroundColor: '#13161e', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, alignItems: 'center', gap: 10, borderTopWidth: 1, borderColor: '#2a3044', paddingBottom: 48 },
-  perfilFechar: { position: 'absolute', top: 20, right: 24 },
+  perfilCard: { backgroundColor: '#13161e', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, borderTopWidth: 1, borderColor: '#2a3044', maxHeight: '85%' },
+  perfilScroll: { alignItems: 'center', gap: 10, padding: 32, paddingTop: 24, paddingBottom: 48 },
+  perfilFechar: { position: 'absolute', top: 20, right: 24, zIndex: 1 },
   perfilFecharTxt: { color: '#64748b', fontSize: 20, fontWeight: 'bold' },
   perfilFoto: { width: 96, height: 96, borderRadius: 48, marginBottom: 4 },
   perfilAvatarGrande: { width: 96, height: 96, borderRadius: 48, backgroundColor: '#4a9eff', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },

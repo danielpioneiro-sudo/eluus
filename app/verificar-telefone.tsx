@@ -167,7 +167,6 @@ export default function VerificarTelefone() {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         <View style={styles.iconCircle}>
-          <Text style={styles.iconEmoji}>📱</Text>
         </View>
 
         <Text style={styles.titulo}>Verificar telefone</Text>

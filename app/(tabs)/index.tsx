@@ -44,7 +44,6 @@ export default function HomeScreen() {
 
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.btnPassageiro} onPress={() => router.push('/cadastro')}>
-          <Text style={styles.btnIcon}>🧍</Text>
           <View>
             <Text style={styles.btnTitle}>{t('index.passenger')}</Text>
             <Text style={styles.btnSub}>{t('index.passengerSub')}</Text>
@@ -52,7 +51,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.btnMotorista} onPress={() => router.push('/cadastro')}>
-          <Text style={styles.btnIcon}>🚗</Text>
           <View>
             <Text style={styles.btnTitle}>{t('index.driver')}</Text>
             <Text style={styles.btnSub}>{t('index.driverSub')}</Text>

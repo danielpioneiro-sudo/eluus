@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { formatDistance } from '../utils/distance';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +112,7 @@ export default function Relatorio() {
         <ActivityIndicator color="#4a9eff" style={{ marginTop: 40 }} />
       ) : corridas.length === 0 ? (
         <View style={styles.vazio}>
-          <Text style={styles.vazioemoji}>📋</Text>
+          <Text style={styles.vazioemoji}>📊</Text>
           <Text style={styles.vaziotxt}>{t('relatorio.noRides')}</Text>
         </View>
       ) : (
@@ -119,15 +120,18 @@ export default function Relatorio() {
           {/* Resumo */}
           <View style={styles.resumoRow}>
             <View style={styles.resumoCard}>
+              <Text style={styles.resumoEmoji}>🚗</Text>
               <Text style={styles.resumoValor}>{corridas.length}</Text>
               <Text style={styles.resumoLabel}>{t('relatorio.rides')}</Text>
             </View>
             <View style={styles.resumoCard}>
+              <Text style={styles.resumoEmoji}>💰</Text>
               <Text style={styles.resumoValor}>$ {totalValor.toFixed(2)}</Text>
               <Text style={styles.resumoLabel}>{t('relatorio.earned')}</Text>
             </View>
             <View style={styles.resumoCard}>
-              <Text style={styles.resumoValor}>{totalKm.toFixed(1)} km</Text>
+              <Text style={styles.resumoEmoji}>🗺️</Text>
+              <Text style={styles.resumoValor}>{formatDistance(totalKm)}</Text>
               <Text style={styles.resumoLabel}>{t('relatorio.driven')}</Text>
             </View>
           </View>
@@ -138,8 +142,8 @@ export default function Relatorio() {
             return (
               <View key={nome} style={styles.passageiroSection}>
                 <View style={styles.passageiroHeader}>
-                  <Text style={styles.passageiroNome}>{nome}</Text>
-                  <Text style={styles.passageiroTotal}>{lista.length}x · $ {totalPax.toFixed(2)}</Text>
+                  <Text style={styles.passageiroNome}>👤 {nome}</Text>
+                  <Text style={styles.passageiroTotal}>{lista.length}x · 💰 $ {totalPax.toFixed(2)}</Text>
                 </View>
                 {lista.map(c => (
                   <View key={c.id} style={styles.corridaItem}>
@@ -148,7 +152,7 @@ export default function Relatorio() {
                       <Text style={styles.corridaItemValor}>$ {c.valor}</Text>
                     </View>
                     <View style={styles.corridaItemBottom}>
-                      <Text style={styles.corridaItemInfo}>{c.distancia} km · {formatarData(c.criadoEm)}</Text>
+                      <Text style={styles.corridaItemInfo}>{formatDistance(c.distancia)} · {formatarData(c.criadoEm)}</Text>
                     </View>
                   </View>
                 ))}
@@ -178,8 +182,9 @@ const styles = StyleSheet.create({
   vazioemoji: { fontSize: 48 },
   vaziotxt: { color: '#64748b', fontSize: 16 },
   resumoRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  resumoCard: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#2a3044' },
-  resumoValor: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
+  resumoCard: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#2a3044', gap: 2 },
+  resumoEmoji: { fontSize: 20, marginBottom: 2 },
+  resumoValor: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   resumoLabel: { color: '#64748b', fontSize: 11 },
   passageiroSection: { marginBottom: 20 },
   passageiroHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

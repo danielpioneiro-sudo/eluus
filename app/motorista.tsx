@@ -27,6 +27,7 @@ import {
   View
 } from 'react-native';
 import { auth, db } from '../firebaseConfig';
+import { formatDistance } from '../utils/distance';
 
 const DISTANCIA_AVISO = 200;
 
@@ -80,6 +81,7 @@ export default function Motorista() {
   const solicitacoesAnteriores = useRef<number>(0);
   const somRef = useRef<Audio.Sound | null>(null);
   const somTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const solicitacaoAtivaRef = useRef<any>(null);
   const [avaliacaoMedia, setAvaliacaoMedia] = useState(5.0);
   const [mostrarModalAvaliacao, setMostrarModalAvaliacao] = useState(false);
   const [estrelasAvaliacao, setEstrelasAvaliacao] = useState(5);
@@ -235,6 +237,20 @@ export default function Motorista() {
     unsubCorridaAtivaRef.current = onSnapshot(doc(db, 'corridas', corridaId), (snap) => {
       const data = snap.data();
       if (!data) return;
+      if (data.status === 'cancelada' && data.canceladoPor !== 'motorista') {
+        if (unsubCorridaAtivaRef.current) unsubCorridaAtivaRef.current();
+        unsubCorridaAtivaRef.current = null;
+        if (unsubChatRef.current) unsubChatRef.current();
+        unsubChatRef.current = null;
+        corridaAceitaRef.current = null;
+        setCorridaAceita(null);
+        setMostrarChat(false);
+        setMensagens([]);
+        setMsgNaoLidas(0);
+        pararRastreamento();
+        Alert.alert(t('motorista.rideCancelledByPassengerTitle'), t('motorista.rideCancelledByPassenger'));
+        return;
+      }
       const atual = corridaAceitaRef.current;
       const temNovaParada = data.paradaDescricao && (!atual?.paradaDescricao || data.paradaDescricao !== atual.paradaDescricao);
       const novoValor = data.valor !== atual?.valor;
@@ -272,6 +288,7 @@ export default function Motorista() {
       if (!snap.empty) {
         const corridaDoc = snap.docs[0];
         const solicitacao = { id: corridaDoc.id, ...corridaDoc.data() };
+        solicitacaoAtivaRef.current = solicitacao;
         setSolicitacaoAtiva(solicitacao);
         tocarNotificacao();
         Vibration.vibrate([0, 500, 200, 500, 200, 500]);
@@ -356,9 +373,17 @@ export default function Motorista() {
       setSolicitacoes(lista);
       if (lista.length > solicitacoesAnteriores.current) {
         const nova = lista[lista.length - 1];
+        solicitacaoAtivaRef.current = nova;
         setSolicitacaoAtiva(nova);
         tocarNotificacao();
         Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+      } else if (
+        solicitacaoAtivaRef.current &&
+        !lista.find(s => s.id === solicitacaoAtivaRef.current.id)
+      ) {
+        pararNotificacao();
+        solicitacaoAtivaRef.current = null;
+        setSolicitacaoAtiva(null);
       }
       solicitacoesAnteriores.current = lista.length;
     });
@@ -488,6 +513,7 @@ export default function Motorista() {
           corridasUsadas: increment(1),
         });
         await batch.commit();
+        solicitacaoAtivaRef.current = null;
         setSolicitacaoAtiva(null);
         corridaAceitaRef.current = solicitacao;
         setCorridaAceita(solicitacao);
@@ -500,6 +526,7 @@ export default function Motorista() {
         await updateDoc(doc(db, 'corridas', corridaId), {
           status: 'recusada', atualizadoEm: new Date(),
         });
+        solicitacaoAtivaRef.current = null;
         setSolicitacaoAtiva(null);
       }
     } catch (e) { Alert.alert(t('common.error'), t('motorista.errResponse')); }
@@ -844,7 +871,6 @@ export default function Motorista() {
       <Modal visible={!!solicitacaoAtiva} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>🚗</Text>
             <Text style={styles.modalTitulo}>{t('motorista.newRide')}</Text>
             {solicitacaoAtiva && (
               <>
@@ -860,7 +886,7 @@ export default function Motorista() {
                 <View style={styles.modalInfoRow}>
                   <View style={styles.modalInfoItem}>
                     <Text style={styles.modalInfoLabel}>{t('motorista.distance')}</Text>
-                    <Text style={styles.modalInfoValor}>{solicitacaoAtiva.distancia} km</Text>
+                    <Text style={styles.modalInfoValor}>{formatDistance(solicitacaoAtiva.distancia)}</Text>
                   </View>
                   <View style={styles.modalInfoItem}>
                     <Text style={styles.modalInfoLabel}>{t('motorista.value')}</Text>
@@ -885,7 +911,7 @@ export default function Motorista() {
       <Modal visible={mostrarNavegacao} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>{navegandoPara === 'passageiro' ? '🧍' : navegandoPara === 'parada' ? '🔶' : '📍'}</Text>
+            <Text style={styles.modalEmoji}>{navegandoPara === 'parada' ? '🔶' : '📍'}</Text>
             <Text style={styles.modalTitulo}>
               {navegandoPara === 'passageiro' ? t('motorista.fetchPassenger') : navegandoPara === 'parada' ? t('motorista.goToStop') : t('motorista.goToDest')}
             </Text>
@@ -916,7 +942,6 @@ export default function Motorista() {
                     <Text style={styles.navBtnTxt}>Google Maps</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.navBtn} onPress={() => abrirNavegacao('waze')}>
-                    <Text style={styles.navBtnEmoji}>🚦</Text>
                     <Text style={styles.navBtnTxt}>Waze</Text>
                   </TouchableOpacity>
                   {Platform.OS === 'ios' && (
@@ -994,21 +1019,19 @@ export default function Motorista() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>eluus</Text>
-            <Text style={styles.bemvindo}>{t('motorista.hello')}, {primeiroNome} 👋</Text>
+            <Text style={styles.bemvindo}>{t('motorista.hello')}, {primeiroNome}</Text>
           </View>
           <View style={styles.headerBtns}>
             <TouchableOpacity onPress={() => router.push('/relatorio')} style={styles.headerBtn}>
               <Text style={styles.headerBtnTxt}>📊</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/historico')} style={styles.headerBtn}>
-              <View>
-                <Text style={styles.headerBtnTxt}>🕐</Text>
-                {msgsPosCorridaBadge > 0 && (
-                  <View style={styles.badgeDot}>
-                    <Text style={styles.badgeTxt}>{msgsPosCorridaBadge > 9 ? '9+' : msgsPosCorridaBadge}</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.headerBtnTxt}>🕐</Text>
+              {msgsPosCorridaBadge > 0 && (
+                <View style={styles.badgeDot}>
+                  <Text style={styles.badgeTxt}>{msgsPosCorridaBadge > 9 ? '9+' : msgsPosCorridaBadge}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/perfil')} style={styles.headerBtn}>
               <Text style={styles.headerBtnTxt}>👤</Text>
@@ -1019,7 +1042,7 @@ export default function Motorista() {
         {/* Status online */}
         <View style={[styles.statusCard, online ? styles.statusOnline : styles.statusOffline]}>
           <View style={styles.statusLeft}>
-            <Text style={styles.statusEmoji}>{online ? '🟢' : '⚫'}</Text>
+            <Text style={styles.statusEmoji}>{''}</Text>
             <View>
               <Text style={styles.statusTitulo}>{online ? t('motorista.online') : t('motorista.offline')}</Text>
               <Text style={styles.statusSub}>{online ? t('motorista.onlineSub') : t('motorista.offlineSub')}</Text>
@@ -1040,7 +1063,7 @@ export default function Motorista() {
                 {corridaAceita.paradaDescricao && (
                   <Text style={styles.corridaAtivaDestino}>🔶 {t('passageiro.stopPrefix')}: {corridaAceita.paradaDescricao}</Text>
                 )}
-                <Text style={styles.corridaAtivaValor}>💰 $ {corridaAceita.valor} · {corridaAceita.distancia} km</Text>
+                <Text style={styles.corridaAtivaValor}>$ {corridaAceita.valor} · {formatDistance(corridaAceita.distancia)}</Text>
               </View>
             </View>
             <View style={styles.corridaAtivaBtns}>
@@ -1154,7 +1177,7 @@ export default function Motorista() {
           <View style={styles.codigoCard}>
             <TouchableOpacity onPress={copiarCodigo} activeOpacity={0.7}>
               <Text style={styles.codigoTxt}>{codigo}</Text>
-              <Text style={styles.codigoCopiarHint}>📋 {t('common.tapToCopy') || 'Toque para copiar'}</Text>
+              <Text style={styles.codigoCopiarHint}>{t('common.tapToCopy') || 'Toque para copiar'}</Text>
             </TouchableOpacity>
             <Text style={styles.codigoSub}>{t('motorista.shareCode')}</Text>
             <View style={styles.codigoBtnsRow}>
@@ -1173,18 +1196,16 @@ export default function Motorista() {
           <Text style={styles.secaoTitulo}>{t('motorista.myRequests')} {solicitacoes.length > 0 ? `(${solicitacoes.length})` : ''}</Text>
           {solicitacoes.length === 0 ? (
             <View style={styles.vazio}>
-              <Text style={styles.vazioemoji}>🕐</Text>
               <Text style={styles.vaziotxt}>{t('motorista.noRequests')}</Text>
               <Text style={styles.vaziossub}>{t('motorista.noRequestsSub')}</Text>
             </View>
           ) : (
             solicitacoes.map((s: any) => (
               <TouchableOpacity key={s.id} style={styles.solicitacaoCard} onPress={() => setSolicitacaoAtiva(s)}>
-                <Text style={styles.solicitacaoEmoji}>🧍</Text>
                 <View style={styles.solicitacaoInfo}>
                   <Text style={styles.solicitacaoNome}>{s.passageiroNome}</Text>
                   <Text style={styles.solicitacaoDestino}>📍 {s.destino}</Text>
-                  <Text style={styles.solicitacaoValor}>$ {s.valor} · {s.distancia} km</Text>
+                  <Text style={styles.solicitacaoValor}>$ {s.valor} · {formatDistance(s.distancia)}</Text>
                 </View>
                 <Text style={styles.verBtn}>Ver →</Text>
               </TouchableOpacity>
@@ -1226,7 +1247,6 @@ export default function Motorista() {
 
           {passageiros.length === 0 ? (
             <View style={styles.vazio}>
-              <Text style={styles.vazioemoji}>🧍</Text>
               <Text style={styles.vaziotxt}>Nenhum passageiro na rede</Text>
               <Text style={styles.vaziossub}>Convide passageiros pelo código</Text>
             </View>

@@ -245,7 +245,7 @@ export default function Comprar() {
         t('comprar.paymentMethod'),
         t('comprar.pixAndPaypal'),
         [
-          { text: '🏦 PIX', onPress: () => comprarPix(pacote.id) },
+          { text: 'PIX', onPress: () => comprarPix(pacote.id) },
           { text: '🔵 PayPal', onPress: () => comprarPayPal(pacote.id, pacote.valorNum) },
           { text: t('common.cancel'), style: 'cancel' },
         ]
@@ -362,7 +362,7 @@ export default function Comprar() {
                 <Text style={styles.pixInstrucao}>{t('comprar.pixInstrucao')}</Text>
                 <TouchableOpacity style={styles.copiaBox} onPress={copiarCodigo}>
                   <Text style={styles.copiaTxt} numberOfLines={2}>{qrCode}</Text>
-                  <Text style={styles.copiaBtn}>📋 Copiar</Text>
+                  <Text style={styles.copiaBtn}>Copiar</Text>
                 </TouchableOpacity>
                 <View style={styles.pixAguardando}>
                   <ActivityIndicator color="#22c55e" size="small" />
@@ -406,7 +406,7 @@ export default function Comprar() {
       {/* Método de pagamento */}
       <View style={styles.metodoCard}>
         <Text style={styles.metodoLabel}>
-          {Platform.OS === 'ios' ? '🍎' : brasil ? '🏦' : '🔵'} {labelMetodoPagamento}
+          {Platform.OS === 'ios' ? '🍎' : '🔵'} {labelMetodoPagamento}
         </Text>
       </View>
 
@@ -459,7 +459,7 @@ export default function Comprar() {
               <Text style={[styles.pacoteValor, p.destaque && styles.pacoteValorDestaque]}>{precoExibido}</Text>
               {isLoading
                 ? <ActivityIndicator color="#4a9eff" size="small" />
-                : <Text style={styles.pacoteSeta}>{Platform.OS === 'ios' ? '🍎' : brasil ? '🏦/🔵' : '🔵'}</Text>
+                : <Text style={styles.pacoteSeta}>{Platform.OS === 'ios' ? '🍎' : '🔵'}</Text>
               }
             </View>
           </TouchableOpacity>
@@ -468,7 +468,6 @@ export default function Comprar() {
 
       {/* Informativo de indicação */}
       <View style={styles.indicacaoCard}>
-        <Text style={styles.indicacaoEmoji}>🎁</Text>
         <Text style={styles.indicacaoTxt}>{t('comprar.referralMsg')}</Text>
       </View>
 

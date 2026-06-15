@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { formatDistance } from '../utils/distance';
 import { addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -232,7 +233,6 @@ export default function Historico() {
       <Modal visible={mostrarEsqueci} transparent animationType="slide" onRequestClose={() => setMostrarEsqueci(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>🎒</Text>
             <Text style={styles.modalTitulo}>{t('historico.forgotTitle')}</Text>
             <Text style={styles.modalSub}>{t('historico.forgotSub')}</Text>
             <TouchableOpacity style={styles.opcaoBtn} onPress={() => corridaSelecionada && abrirChat(corridaSelecionada)}>
@@ -255,7 +255,6 @@ export default function Historico() {
       <Modal visible={mostrarContato} transparent animationType="slide" onRequestClose={() => setMostrarContato(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalEmoji}>📞</Text>
             <Text style={styles.modalTitulo}>{t('historico.contactTitle')}</Text>
             {motoristaDados ? (
               <>
@@ -369,14 +368,17 @@ export default function Historico() {
         {/* Resumo */}
         <View style={styles.resumoRow}>
           <View style={styles.resumoCard}>
+            <Text style={styles.resumoEmoji}>✅</Text>
             <Text style={styles.resumoValor}>{corridas.filter(c => c.status === 'finalizada').length}</Text>
             <Text style={styles.resumoLabel}>{t('historico.completed')}</Text>
           </View>
           <View style={styles.resumoCard}>
+            <Text style={styles.resumoEmoji}>✕</Text>
             <Text style={styles.resumoValor}>{corridas.filter(c => c.status === 'cancelada').length}</Text>
             <Text style={styles.resumoLabel}>{t('historico.cancelled')}</Text>
           </View>
           <View style={styles.resumoCard}>
+            <Text style={styles.resumoEmoji}>💰</Text>
             <Text style={[styles.resumoValor, { color: '#4a9eff', fontSize: 16 }]}>
               $ {totalGasto.toFixed(2)}
             </Text>
@@ -406,7 +408,6 @@ export default function Historico() {
         {/* Lista */}
         {corridasFiltradas.length === 0 ? (
           <View style={styles.vazio}>
-            <Text style={styles.vazioemoji}>🕐</Text>
             <Text style={styles.vaziotxt}>{t('historico.noRides')}</Text>
             <Text style={styles.vaziossub}>{t('historico.noRidesSub')}</Text>
           </View>
@@ -426,23 +427,23 @@ export default function Historico() {
                 <View style={styles.corridaInfo}>
                   <View style={styles.corridaRow}>
                     <Text style={styles.corridaLabel}>
-                      {tipo === 'motorista' ? t('historico.passenger') : t('historico.driver')}
+                      👤 {tipo === 'motorista' ? t('historico.passenger') : t('historico.driver')}
                     </Text>
                     <Text style={styles.corridaValorTxt}>
                       {tipo === 'motorista' ? c.passageiroNome : c.motoristaNome}
                     </Text>
                   </View>
                   <View style={styles.corridaRow}>
-                    <Text style={styles.corridaLabel}>{t('historico.destination')}</Text>
+                    <Text style={styles.corridaLabel}>📍 {t('historico.destination')}</Text>
                     <Text style={styles.corridaDestino} numberOfLines={2}>{c.destino}</Text>
                   </View>
                   <View style={styles.corridaDivider} />
                   <View style={styles.corridaRow}>
-                    <Text style={styles.corridaLabel}>{t('historico.distance')}</Text>
-                    <Text style={styles.corridaValorTxt}>{c.distancia} km</Text>
+                    <Text style={styles.corridaLabel}>🗺️ {t('historico.distance')}</Text>
+                    <Text style={styles.corridaValorTxt}>{formatDistance(c.distancia)}</Text>
                   </View>
                   <View style={styles.corridaRow}>
-                    <Text style={styles.corridaLabel}>{t('historico.value')}</Text>
+                    <Text style={styles.corridaLabel}>💰 {t('historico.value')}</Text>
                     <Text style={styles.corridaPreco}>$ {c.valor}</Text>
                   </View>
                 </View>
@@ -450,7 +451,7 @@ export default function Historico() {
                 {/* Botão "Esqueci algo" — apenas passageiros em corridas finalizadas */}
                 {tipo !== 'motorista' && c.status === 'finalizada' && (
                   <TouchableOpacity style={styles.esqueciBtn} onPress={() => abrirEsqueci(c)}>
-                    <Text style={styles.esqueciTxt}>{t('historico.forgotSomething')}</Text>
+                    <Text style={styles.esqueciTxt}>🎒 {t('historico.forgotSomething')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -486,7 +487,8 @@ const styles = StyleSheet.create({
   voltarTxt: { color: '#94a3b8', fontSize: 13 },
   titulo: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   resumoRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  resumoCard: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#2a3044', gap: 4 },
+  resumoCard: { flex: 1, backgroundColor: '#1a1f2e', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#2a3044', gap: 2 },
+  resumoEmoji: { fontSize: 20, marginBottom: 2 },
   resumoValor: { color: '#fff', fontWeight: 'bold', fontSize: 22 },
   resumoLabel: { color: '#64748b', fontSize: 11, textAlign: 'center' },
   filtrosContainer: { marginBottom: 20 },
