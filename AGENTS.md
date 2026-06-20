@@ -39,8 +39,20 @@ App de transporte por aplicativo (passageiro + motorista).
 - **Apple Developer:** conta pessoal (migração para empresa pendente)
 - **GitHub:** `danielpioneiro-sudo/eluus`
 
-## Sites vinculados
-- Nenhum site web público — app only
+## Firebase Hosting (site web vinculado ao app)
+- **Firebase Project ID:** `voucom-285e0`
+- **Deploy:** `firebase deploy`
+- Rotas configuradas em `firebase.json`:
+
+| Rota | Arquivo | Descrição |
+|---|---|---|
+| `/admin` | `public/admin.html` | Painel admin web (interface escura, laranja) |
+| `/m` | `public/m.html` | Versão mobile web |
+| `/download` | `public/download.html` | Página de download do app |
+| `/privacidade` | `public/privacidade.html` | Política de privacidade |
+| `/termos` | `public/termos.html` | Termos de uso |
+| `/solicitar-exclusao` | `public/solicitar-exclusao.html` | Exclusão de conta (exigência Apple/Google) |
+| `/consentimento-localizacao` | `public/consentimento-localizacao.html` | Consentimento de localização |
 
 ## Contas de teste
 | Conta | E-mail | Senha | Tipo |
