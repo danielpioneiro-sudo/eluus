@@ -53,3 +53,7 @@ App de transporte por aplicativo (passageiro + motorista).
 - Simulador de referência: iPad Air 11-inch (M3) iOS 26.5
 - Não usar EAS Build para produção iOS
 - Testar no dispositivo físico via `npx expo run:ios --device` (cabo USB)
+
+## Credenciais
+As chaves e tokens ficam no arquivo de ambiente — leia antes de fazer qualquer alteração:
+- `/Volumes/dp/Projetos/eluus/.env`
